@@ -1,0 +1,123 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+@layer base {
+  :root {
+    --background: 222 47% 6%;
+    --foreground: 210 20% 95%;
+    --card: 220 35% 9%;
+    --card-foreground: 210 20% 95%;
+    --popover: 220 35% 9%;
+    --popover-foreground: 210 20% 95%;
+    --primary: 188 86% 53%;
+    --primary-foreground: 222 47% 6%;
+    --secondary: 220 30% 14%;
+    --secondary-foreground: 210 20% 95%;
+    --muted: 220 30% 14%;
+    --muted-foreground: 215 16% 62%;
+    --accent: 220 30% 14%;
+    --accent-foreground: 210 20% 95%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 20% 95%;
+    --border: 220 30% 16%;
+    --input: 220 30% 14%;
+    --ring: 188 86% 53%;
+    --radius: 0.625rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Space Grotesk', sans-serif;
+    letter-spacing: -0.01em;
+  }
+}
+
+/* ─── TECNOPRO Theme Variables ──────────────────────────────────────────────── */
+
+/* Dark theme (default) */
+:root {
+  --tp-bg: #0a0f1a;
+  --tp-card: #101725;
+  --tp-input: #172033;
+  --tp-cyan: 34 211 238;
+  --tp-teal: 20 184 166;
+  --tp-green: 52 211 153;
+  --tp-red: 251 113 133;
+  --tp-amber: 251 191 36;
+  --tp-violet: 167 139 250;
+  --tp-text: #eef1f6;
+  --tp-text-secondary: #c5ccd8;
+  --tp-text-muted: #9aa4b4;
+  --tp-surface: #0a0f1a;
+  --tp-surface-low: #101725;
+  --tp-surface-mid: #172033;
+  --tp-surface-high: #1f2a40;
+  --tp-surface-highest: #2a3550;
+  --tp-steel: #8a93a3;
+  --tp-outline: #909096;
+  --tp-line: #1f2a40;
+  --tp-line-soft: #172033;
+}
+
+/* Light theme (placeholder — fase posterior si Guillermo lo pide) */
+[data-theme="light"] {
+  --background: 220 20% 97%;
+  --foreground: 222 47% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 15%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 15%;
+  --primary: 188 86% 40%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 220 14% 92%;
+  --secondary-foreground: 222 47% 15%;
+  --muted: 220 14% 92%;
+  --muted-foreground: 215 16% 47%;
+  --accent: 220 14% 92%;
+  --accent-foreground: 222 47% 15%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 220 13% 87%;
+  --input: 220 13% 91%;
+  --ring: 188 86% 40%;
+
+  --tp-bg: #f5f7fa;
+  --tp-card: #ffffff;
+  --tp-input: #f0f2f5;
+  --tp-cyan: 8 145 178;
+  --tp-teal: 13 148 136;
+  --tp-green: 22 163 74;
+  --tp-red: 220 38 38;
+  --tp-amber: 217 119 6;
+  --tp-violet: 124 58 237;
+  --tp-text: #0a0f1a;
+  --tp-text-secondary: #334155;
+  --tp-text-muted: #64748b;
+  --tp-surface: #f8f9fc;
+  --tp-surface-low: #f1f3f7;
+  --tp-surface-mid: #e8eaf0;
+  --tp-surface-high: #dde1e8;
+  --tp-surface-highest: #d0d5de;
+  --tp-steel: #475569;
+  --tp-outline: #94a3b8;
+  --tp-line: #dde1e8;
+  --tp-line-soft: #e8eaf0;
+}
+
+/* Sutil grid de circuito como fondo decorativo */
+.tp-circuit {
+  background-image: radial-gradient(rgba(34, 211, 238, .06) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
