@@ -63,8 +63,8 @@ Datos base que el resto consume.
 - [x] **03 · Clientes** — alta, edición, búsqueda, soft delete, IDs CLI-XXXX (historial de órdenes se agrega en Ola B)
 - [x] **06 · Catálogo de servicios** — SRV-XXXX, categorías, precio base, tiempo estimado, activo/inactivo
 - [x] **07 · Inventario / Stock** — REP-XXXX, movimientos ENTRADA/SALIDA/AJUSTE con trigger, alerta stock bajo, historial inmutable
-- [ ] **13 · Usuarios y técnicos** — alta de técnicos, asignación, permisos
-- [ ] **14 · Configuraciones** — datos del negocio, márgenes, branding
+- [x] **13 · Usuarios y técnicos** — alta con email+password, editar rol/activo, cambio de contraseña por admin, self-lock (no podés desactivarte ni sacarte admin)
+- [x] **14 · Configuraciones** — form del negocio (nombre, teléfono, dirección, moneda, márgenes, validez de presupuestos, ventanas de alertas)
 
 ### Ola B · Operación
 Núcleo transaccional.
