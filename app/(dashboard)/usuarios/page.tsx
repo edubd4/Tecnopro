@@ -1,13 +1,120 @@
-import { UserCog } from "lucide-react"
-import { ComingSoon } from "@/components/ComingSoon"
+import Link from "next/link"
+import { redirect } from "next/navigation"
+import { Plus } from "lucide-react"
+import { createServerClient } from "@/lib/supabase/server"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableEmpty } from "@/components/ui/table"
+import { ROL } from "@/lib/constants"
 
-export default function UsuariosPage() {
+type Profile = {
+  id: string
+  email: string
+  nombre: string
+  rol: "admin" | "tecnico"
+  activo: boolean
+  created_at: string
+}
+
+export default async function UsuariosPage() {
+  const supabase = await createServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  const { data: myProfile } = await supabase
+    .from("profiles")
+    .select("rol, activo")
+    .eq("id", user!.id)
+    .single()
+
+  // Guard fuerte: usuarios es admin-only.
+  if (myProfile?.rol !== ROL.ADMIN || !myProfile.activo) {
+    redirect("/panel")
+  }
+
+  const { data: profiles, error } = await supabase
+    .from("profiles")
+    .select("id, email, nombre, rol, activo, created_at")
+    .order("activo", { ascending: false })
+    .order("rol", { ascending: true })
+    .order("nombre", { ascending: true })
+
+  const rows = (profiles ?? []) as Profile[]
+
   return (
-    <ComingSoon
-      title="Usuarios y técnicos"
-      description="Alta y gestión de técnicos, asignación de órdenes y permisos por rol."
-      phase="Fase 2 · Ola A (Maestros)"
-      icon={UserCog}
-    />
+    <div className="tp-circuit min-h-[calc(100vh-4rem)] px-6 md:px-10 py-8">
+      <div className="max-w-5xl mx-auto space-y-6">
+        <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+          <div>
+            <p className="font-mono text-[11px] text-tp-cyan tracking-[0.18em] uppercase">
+              Módulo · Usuarios
+            </p>
+            <h1 className="font-display text-3xl md:text-4xl font-bold mt-1">
+              Usuarios y técnicos
+            </h1>
+            <p className="text-tp-secondary mt-1">
+              Alta y gestión de accesos al sistema.
+            </p>
+          </div>
+
+          <Button asChild>
+            <Link href="/usuarios/nuevo">
+              <Plus className="w-4 h-4" />
+              Nuevo usuario
+            </Link>
+          </Button>
+        </header>
+
+        {error ? (
+          <div className="rounded-md border border-tp-red/40 bg-tp-red/10 px-4 py-3 text-sm text-tp-red">
+            Error al cargar usuarios: {error.message}
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead className="w-[120px]">Rol</TableHead>
+                <TableHead className="w-[110px]">Estado</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.length === 0 ? (
+                <TableEmpty colSpan={4}>
+                  Aún no hay usuarios cargados.
+                </TableEmpty>
+              ) : (
+                rows.map((u) => (
+                  <TableRow key={u.id}>
+                    <TableCell className="text-tp-text font-medium">
+                      <Link href={`/usuarios/${u.id}`}>{u.nombre}</Link>
+                      {u.id === user!.id && (
+                        <span className="ml-2 font-mono text-[10px] text-tp-cyan uppercase tracking-widest">
+                          (vos)
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-tp-muted">
+                      {u.email}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={u.rol === "admin" ? "cyan" : "violet"}>
+                        {u.rol.toUpperCase()}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={u.activo ? "green" : "gray"}>
+                        {u.activo ? "ACTIVO" : "INACTIVO"}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        )}
+      </div>
+    </div>
   )
 }
