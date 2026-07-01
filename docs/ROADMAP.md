@@ -61,8 +61,8 @@ Los 14 módulos en 4 olas. Cada ola es un set de migraciones SQL + rutas + UI.
 Datos base que el resto consume.
 
 - [x] **03 · Clientes** — alta, edición, búsqueda, soft delete, IDs CLI-XXXX (historial de órdenes se agrega en Ola B)
-- [ ] **06 · Catálogo de servicios** — categorías, precio base, tiempo estimado
-- [ ] **07 · Inventario / Stock** — repuestos, costo, stock mínimo, movimientos
+- [x] **06 · Catálogo de servicios** — SRV-XXXX, categorías, precio base, tiempo estimado, activo/inactivo
+- [x] **07 · Inventario / Stock** — REP-XXXX, movimientos ENTRADA/SALIDA/AJUSTE con trigger, alerta stock bajo, historial inmutable
 - [ ] **13 · Usuarios y técnicos** — alta de técnicos, asignación, permisos
 - [ ] **14 · Configuraciones** — datos del negocio, márgenes, branding
 
