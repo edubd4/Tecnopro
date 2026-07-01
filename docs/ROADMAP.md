@@ -70,7 +70,7 @@ Datos base que el resto consume.
 Núcleo transaccional.
 
 - [x] **02 · Órdenes de trabajo** — CRUD + estado + asignar técnico + items imputados (servicios + repuestos con movimiento SALIDA automático via RPC transaccional) + cálculo de total
-- [ ] **04 · Turnos + calendario** — vista día/semana/mes, detección de superposición
+- [x] **04 · Turnos + calendario** — CRUD + vista semana con grilla horaria + vista lista + navegación entre semanas + detección de superposición por técnico via RPC con tstzrange
 - [ ] **05 · Presupuestos** — items, márgenes, estado (BORRADOR/ENVIADO/...), validez
 
 ### Ola C · Plata
