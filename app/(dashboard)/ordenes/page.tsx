@@ -2,16 +2,15 @@ import Link from "next/link"
 import { Plus } from "lucide-react"
 import { createServerClient } from "@/lib/supabase/server"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableEmpty } from "@/components/ui/table"
+import { Table, TableBody, TableHead, TableHeader, TableRow, TableEmpty } from "@/components/ui/table"
 import { SearchInput } from "@/components/ui/search-input"
 import { EstadoFilterSelect } from "@/components/ordenes/EstadoFilterSelect"
-import { formatFecha } from "@/lib/utils"
-import { ESTADO_ORDEN_LABEL, ESTADO_ORDEN_VARIANT, PRIORIDAD_LABEL, PRIORIDAD_VARIANT } from "@/lib/ordenes-ui"
+import { OrdenListRow } from "@/components/ordenes/OrdenListRow"
 
 type OrdenRow = {
   id: string
   id_publico: string
+  cliente_id: string | null
   estado: string
   prioridad: string
   equipo_desc: string | null
@@ -19,12 +18,6 @@ type OrdenRow = {
   fecha_entrega_estimada: string | null
   clientes: { id_publico: string; nombre: string; apellido: string | null; razon_social: string | null; tipo: string } | null
   tecnico: { nombre: string } | null
-}
-
-function nombreCliente(c: OrdenRow["clientes"]): string {
-  if (!c) return "—"
-  if (c.tipo === "EMPRESA") return c.razon_social ?? c.nombre
-  return [c.nombre, c.apellido].filter(Boolean).join(" ")
 }
 
 export default async function OrdenesPage({
@@ -40,7 +33,7 @@ export default async function OrdenesPage({
   let query = supabase
     .from("ordenes")
     .select(`
-      id, id_publico, estado, prioridad, equipo_desc, fecha_recepcion, fecha_entrega_estimada,
+      id, id_publico, cliente_id, estado, prioridad, equipo_desc, fecha_recepcion, fecha_entrega_estimada,
       clientes:cliente_id ( id_publico, nombre, apellido, razon_social, tipo ),
       tecnico:tecnico_asignado_id ( nombre )
     `)
@@ -93,6 +86,10 @@ export default async function OrdenesPage({
           </p>
         </div>
 
+        <p className="font-mono text-[10.5px] text-tp-muted -mt-2">
+          Tip: click en la fila abre la orden · click en el nombre abre el cliente · cambiá el estado desde el select
+        </p>
+
         {error ? (
           <div className="rounded-md border border-tp-red/40 bg-tp-red/10 px-4 py-3 text-sm text-tp-red">
             Error al cargar órdenes: {error.message}
@@ -104,7 +101,7 @@ export default async function OrdenesPage({
                 <TableHead className="w-[100px]">ID</TableHead>
                 <TableHead>Cliente</TableHead>
                 <TableHead>Equipo</TableHead>
-                <TableHead className="w-[130px]">Estado</TableHead>
+                <TableHead className="w-[160px]">Estado</TableHead>
                 <TableHead className="w-[100px]">Prioridad</TableHead>
                 <TableHead className="w-[120px]">Técnico</TableHead>
                 <TableHead className="w-[120px]">Recibida</TableHead>
@@ -119,33 +116,18 @@ export default async function OrdenesPage({
                 </TableEmpty>
               ) : (
                 rows.map((o) => (
-                  <TableRow key={o.id}>
-                    <TableCell className="font-mono text-tp-cyan">
-                      <Link href={`/ordenes/${o.id}`}>{o.id_publico}</Link>
-                    </TableCell>
-                    <TableCell className="text-tp-text">
-                      <Link href={`/ordenes/${o.id}`}>{nombreCliente(o.clientes)}</Link>
-                    </TableCell>
-                    <TableCell className="text-tp-muted text-sm">
-                      {o.equipo_desc ?? "—"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={ESTADO_ORDEN_VARIANT[o.estado] ?? "gray"}>
-                        {ESTADO_ORDEN_LABEL[o.estado] ?? o.estado}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={PRIORIDAD_VARIANT[o.prioridad] ?? "gray"}>
-                        {PRIORIDAD_LABEL[o.prioridad] ?? o.prioridad}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-tp-muted text-sm">
-                      {o.tecnico?.nombre ?? "Sin asignar"}
-                    </TableCell>
-                    <TableCell className="font-mono text-xs text-tp-muted">
-                      {formatFecha(o.fecha_recepcion)}
-                    </TableCell>
-                  </TableRow>
+                  <OrdenListRow
+                    key={o.id}
+                    id={o.id}
+                    id_publico={o.id_publico}
+                    cliente_id={o.cliente_id}
+                    estado={o.estado}
+                    prioridad={o.prioridad}
+                    equipo_desc={o.equipo_desc}
+                    fecha_recepcion={o.fecha_recepcion}
+                    clientes={o.clientes}
+                    tecnico={o.tecnico}
+                  />
                 ))
               )}
             </TableBody>
