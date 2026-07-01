@@ -69,7 +69,7 @@ Datos base que el resto consume.
 ### Ola B · Operación
 Núcleo transaccional.
 
-- [ ] **02 · Órdenes de trabajo** — estado, técnico, repuestos imputados, historial
+- [~] **02 · Órdenes de trabajo** — [x] base (CRUD + estado + asignar técnico) · [ ] items imputados (servicios + repuestos + movimiento SALIDA automático) — próxima entrega
 - [ ] **04 · Turnos + calendario** — vista día/semana/mes, detección de superposición
 - [ ] **05 · Presupuestos** — items, márgenes, estado (BORRADOR/ENVIADO/...), validez
 
