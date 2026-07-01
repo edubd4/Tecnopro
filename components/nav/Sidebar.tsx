@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation"
 import { X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { NavGroup } from "@/lib/nav"
+import { ICONS } from "./icons"
 
 type SidebarProps = {
   groups: NavGroup[]
@@ -48,7 +49,7 @@ export function Sidebar({ groups, onNavigate, className }: SidebarProps) {
             </p>
             <ul className="space-y-0.5">
               {group.items.map((item) => {
-                const Icon = item.icon
+                const Icon = ICONS[item.iconKey]
                 const isActive =
                   pathname === item.href || pathname.startsWith(`${item.href}/`)
                 return (

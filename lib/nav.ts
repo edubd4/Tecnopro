@@ -1,26 +1,29 @@
-import type { LucideIcon } from "lucide-react"
-import {
-  LayoutDashboard,
-  ClipboardList,
-  Users,
-  CalendarDays,
-  FileText,
-  BookOpen,
-  Package,
-  Wallet,
-  Receipt,
-  Landmark,
-  Calculator,
-  BarChart3,
-  UserCog,
-  Settings,
-} from "lucide-react"
 import { ROL, type Rol } from "@/lib/constants"
+
+// Las claves de iconos deben existir en `components/nav/icons.ts`.
+// Se usa string en vez de un componente React porque el nav se define en el
+// server component (layout) y se pasa como prop a un client component; las
+// funciones/componentes no son JSON-serializables cruzando la frontera.
+export type IconKey =
+  | "LayoutDashboard"
+  | "ClipboardList"
+  | "Users"
+  | "CalendarDays"
+  | "FileText"
+  | "BookOpen"
+  | "Package"
+  | "Wallet"
+  | "Receipt"
+  | "Landmark"
+  | "Calculator"
+  | "BarChart3"
+  | "UserCog"
+  | "Settings"
 
 export type NavItem = {
   label: string
   href: string
-  icon: LucideIcon
+  iconKey: IconKey
   // Roles que pueden ver este item. Si no se define, cualquier rol autenticado.
   roles?: Rol[]
 }
@@ -35,40 +38,40 @@ export const NAV: NavGroup[] = [
   {
     label: "Operación",
     items: [
-      { label: "Panel",     href: "/panel",       icon: LayoutDashboard },
-      { label: "Órdenes",   href: "/ordenes",     icon: ClipboardList },
-      { label: "Turnos",    href: "/turnos",      icon: CalendarDays },
-      { label: "Clientes",  href: "/clientes",    icon: Users },
+      { label: "Panel",     href: "/panel",       iconKey: "LayoutDashboard" },
+      { label: "Órdenes",   href: "/ordenes",     iconKey: "ClipboardList" },
+      { label: "Turnos",    href: "/turnos",      iconKey: "CalendarDays" },
+      { label: "Clientes",  href: "/clientes",    iconKey: "Users" },
     ],
   },
   {
     label: "Comercial",
     items: [
-      { label: "Presupuestos", href: "/presupuestos", icon: FileText },
-      { label: "Catálogo",     href: "/catalogo",     icon: BookOpen },
-      { label: "Stock",        href: "/stock",        icon: Package },
+      { label: "Presupuestos", href: "/presupuestos", iconKey: "FileText" },
+      { label: "Catálogo",     href: "/catalogo",     iconKey: "BookOpen" },
+      { label: "Stock",        href: "/stock",        iconKey: "Package" },
     ],
   },
   {
     label: "Plata",
     items: [
-      { label: "Caja",         href: "/caja",         icon: Wallet,   roles: [ROL.ADMIN] },
-      { label: "Gastos",       href: "/gastos",       icon: Receipt,  roles: [ROL.ADMIN] },
-      { label: "Tesorería",    href: "/tesoreria",    icon: Landmark, roles: [ROL.ADMIN] },
-      { label: "Contabilidad", href: "/contabilidad", icon: Calculator, roles: [ROL.ADMIN] },
+      { label: "Caja",         href: "/caja",         iconKey: "Wallet",     roles: [ROL.ADMIN] },
+      { label: "Gastos",       href: "/gastos",       iconKey: "Receipt",    roles: [ROL.ADMIN] },
+      { label: "Tesorería",    href: "/tesoreria",    iconKey: "Landmark",   roles: [ROL.ADMIN] },
+      { label: "Contabilidad", href: "/contabilidad", iconKey: "Calculator", roles: [ROL.ADMIN] },
     ],
   },
   {
     label: "Análisis",
     items: [
-      { label: "Analytics", href: "/analytics", icon: BarChart3, roles: [ROL.ADMIN] },
+      { label: "Analytics", href: "/analytics", iconKey: "BarChart3", roles: [ROL.ADMIN] },
     ],
   },
   {
     label: "Sistema",
     items: [
-      { label: "Usuarios",       href: "/usuarios",     icon: UserCog,  roles: [ROL.ADMIN] },
-      { label: "Configuración",  href: "/configuracion", icon: Settings, roles: [ROL.ADMIN] },
+      { label: "Usuarios",       href: "/usuarios",     iconKey: "UserCog",  roles: [ROL.ADMIN] },
+      { label: "Configuración",  href: "/configuracion", iconKey: "Settings", roles: [ROL.ADMIN] },
     ],
   },
 ]
