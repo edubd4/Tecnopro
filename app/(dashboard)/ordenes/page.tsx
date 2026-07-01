@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableEmpty } from "@/components/ui/table"
 import { SearchInput } from "@/components/ui/search-input"
+import { EstadoFilterSelect } from "@/components/ordenes/EstadoFilterSelect"
 import { formatFecha } from "@/lib/utils"
 import { ESTADO_ORDEN_LABEL, ESTADO_ORDEN_VARIANT, PRIORIDAD_LABEL, PRIORIDAD_VARIANT } from "@/lib/ordenes-ui"
 
@@ -19,18 +20,6 @@ type OrdenRow = {
   clientes: { id_publico: string; nombre: string; apellido: string | null; razon_social: string | null; tipo: string } | null
   tecnico: { nombre: string } | null
 }
-
-const ESTADO_FILTROS = [
-  { value: "",              label: "Todos los estados" },
-  { value: "ACTIVAS",       label: "Activas (no entregadas ni canceladas)" },
-  { value: "RECIBIDA",      label: "Recibida" },
-  { value: "DIAGNOSTICO",   label: "En diagnóstico" },
-  { value: "PRESUPUESTADA", label: "Presupuestada" },
-  { value: "EN_REPARACION", label: "En reparación" },
-  { value: "LISTA",         label: "Lista para entrega" },
-  { value: "ENTREGADA",     label: "Entregada" },
-  { value: "CANCELADA",     label: "Cancelada" },
-]
 
 function nombreCliente(c: OrdenRow["clientes"]): string {
   if (!c) return "—"
@@ -98,25 +87,7 @@ export default async function OrdenesPage({
 
         <div className="flex flex-col sm:flex-row gap-3">
           <SearchInput basePath="/ordenes" placeholder="Buscar por OT, equipo…" />
-          <form className="flex gap-2 items-center">
-            <select
-              name="estado"
-              defaultValue={filtroEstado}
-              onChange={(e) => {
-                const sp = new URLSearchParams(window.location.search)
-                if (e.target.value) sp.set("estado", e.target.value)
-                else sp.delete("estado")
-                window.location.href = `/ordenes?${sp.toString()}`
-              }}
-              className="h-10 rounded-md border border-tp-line bg-tp-input px-3 text-sm text-tp-text"
-            >
-              {ESTADO_FILTROS.map((f) => (
-                <option key={f.value} value={f.value}>
-                  {f.label}
-                </option>
-              ))}
-            </select>
-          </form>
+          <EstadoFilterSelect />
           <p className="font-mono text-[11px] text-tp-muted self-center">
             {rows.length} orden{rows.length === 1 ? "" : "es"}
           </p>
