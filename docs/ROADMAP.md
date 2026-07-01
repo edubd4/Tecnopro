@@ -60,7 +60,7 @@ Los 14 módulos en 4 olas. Cada ola es un set de migraciones SQL + rutas + UI.
 ### Ola A · Maestros
 Datos base que el resto consume.
 
-- [ ] **03 · Clientes** — alta, edición, búsqueda, historial por cliente
+- [x] **03 · Clientes** — alta, edición, búsqueda, soft delete, IDs CLI-XXXX (historial de órdenes se agrega en Ola B)
 - [ ] **06 · Catálogo de servicios** — categorías, precio base, tiempo estimado
 - [ ] **07 · Inventario / Stock** — repuestos, costo, stock mínimo, movimientos
 - [ ] **13 · Usuarios y técnicos** — alta de técnicos, asignación, permisos
