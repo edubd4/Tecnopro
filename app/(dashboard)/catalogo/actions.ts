@@ -16,7 +16,7 @@ export async function createServicio(input: ServicioInput): Promise<ActionResult
   }
 
   const guard = await requireAdmin()
-  if (guard.error) return { ok: false, error: guard.error }
+  if (!guard.ok) return { ok: false, error: guard.error }
   const { supabase, user } = guard
 
   const { data, error } = await supabase
@@ -52,7 +52,7 @@ export async function updateServicio(id: string, input: ServicioInput): Promise<
   }
 
   const guard = await requireAdmin()
-  if (guard.error) return { ok: false, error: guard.error }
+  if (!guard.ok) return { ok: false, error: guard.error }
   const { supabase, user } = guard
 
   const { data, error } = await supabase
@@ -81,7 +81,7 @@ export async function updateServicio(id: string, input: ServicioInput): Promise<
 
 export async function toggleServicioActivo(id: string): Promise<ActionResult> {
   const guard = await requireAdmin()
-  if (guard.error) return { ok: false, error: guard.error }
+  if (!guard.ok) return { ok: false, error: guard.error }
   const { supabase, user } = guard
 
   const { data: current, error: readErr } = await supabase

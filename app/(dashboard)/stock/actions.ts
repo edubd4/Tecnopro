@@ -17,7 +17,7 @@ export async function createRepuesto(input: RepuestoInput): Promise<ActionResult
   }
 
   const guard = await requireAdmin()
-  if (guard.error) return { ok: false, error: guard.error }
+  if (!guard.ok) return { ok: false, error: guard.error }
   const { supabase, user } = guard
 
   const { data, error } = await supabase
@@ -53,7 +53,7 @@ export async function updateRepuesto(id: string, input: RepuestoInput): Promise<
   }
 
   const guard = await requireAdmin()
-  if (guard.error) return { ok: false, error: guard.error }
+  if (!guard.ok) return { ok: false, error: guard.error }
   const { supabase, user } = guard
 
   const { data, error } = await supabase
@@ -82,7 +82,7 @@ export async function updateRepuesto(id: string, input: RepuestoInput): Promise<
 
 export async function toggleRepuestoActivo(id: string): Promise<ActionResult> {
   const guard = await requireAdmin()
-  if (guard.error) return { ok: false, error: guard.error }
+  if (!guard.ok) return { ok: false, error: guard.error }
   const { supabase, user } = guard
 
   const { data: current, error: readErr } = await supabase
@@ -121,7 +121,7 @@ export async function registrarMovimiento(input: MovimientoInput): Promise<Actio
   }
 
   const guard = await requireAdmin()
-  if (guard.error) return { ok: false, error: guard.error }
+  if (!guard.ok) return { ok: false, error: guard.error }
   const { supabase, user } = guard
 
   // El trigger aplicar_movimiento_stock() en SQL hace toda la logica
