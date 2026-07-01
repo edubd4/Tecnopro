@@ -37,11 +37,14 @@ Base estructural lista para desarrollar módulos encima.
 - [x] Primitivos UI: `Button`, `Input`, `Label`, `Card`
 - [ ] **Manual del user**: crear primer admin (Guillermo) en Supabase Auth + promoverlo a `admin` en `profiles`
 
-### 1.3 · Shell del dashboard
-- [ ] Sidebar con navegación a los 14 módulos (placeholders)
-- [ ] Header con nombre de usuario, rol, switch de tema (opcional fase 2)
-- [ ] Layout responsive (mobile-first decente, no perfecto)
-- [ ] `components/ui/` con primitivos: Button, Input, Label, Card, Badge, Table, Dialog, DropdownMenu, Toast — copiados/adaptados de Gojulito
+### 1.3 · Shell del dashboard ✅
+- [x] `lib/nav.ts` con configuración de 5 grupos y 14 items, filtrable por rol
+- [x] Sidebar con navegación completa + active state + separación por grupos
+- [x] Filtrado automático de módulos según rol (`admin` ve todo, `tecnico` no ve caja/gastos/tesorería/contabilidad/analytics/usuarios/configuración)
+- [x] Header con nombre + rol + botón mobile menu + logout
+- [x] Layout responsive: sidebar fijo en desktop (lg+), drawer con backdrop en mobile
+- [x] Placeholders de las 13 rutas restantes (`/ordenes`, `/clientes`, etc.) con `<ComingSoon>` reutilizable
+- [ ] Más primitivos UI (Badge, Table, Dialog, Toast) — se agregan bajo demanda por módulo
 
 ### 1.4 · Deploy inicial
 - [ ] Vercel conectado al repo, env vars cargadas
