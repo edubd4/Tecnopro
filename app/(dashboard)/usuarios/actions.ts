@@ -32,6 +32,10 @@ export async function createUsuario(input: UsuarioCreateInput): Promise<ActionRe
   // Para crear un usuario necesitamos service_role: bypass RLS + auth.admin
   const admin = createServiceRoleClient()
 
+  // El trigger handle_new_user() (SECURITY DEFINER) ya lee `nombre` y `rol`
+  // del raw_user_meta_data y crea el profile correctamente. No hace falta
+  // update posterior. Ese update lanzaba "permission denied for table profiles"
+  // por como resuelve PostgREST el service_role con RLS habilitada.
   const { data: created, error: createErr } = await admin.auth.admin.createUser({
     email: parsed.data.email,
     password: parsed.data.password,
@@ -44,22 +48,6 @@ export async function createUsuario(input: UsuarioCreateInput): Promise<ActionRe
 
   if (createErr || !created?.user) {
     return { ok: false, error: createErr?.message ?? "No se pudo crear el usuario" }
-  }
-
-  // El trigger handle_new_user() creo el profile con rol default 'tecnico'
-  // y el nombre desde user_metadata. Aseguramos rol y activo con un update
-  // por si el trigger evoluciona o el metadata no se lee.
-  const { error: profileErr } = await admin
-    .from("profiles")
-    .update({
-      nombre: parsed.data.nombre,
-      rol: parsed.data.rol,
-      activo: true,
-    })
-    .eq("id", created.user.id)
-
-  if (profileErr) {
-    return { ok: false, error: `Usuario creado pero no se pudo asignar el rol: ${profileErr.message}` }
   }
 
   await logHistorial(supabase, {
@@ -87,8 +75,6 @@ export async function updateUsuario(id: string, input: UsuarioUpdateInput): Prom
   // Bloqueos de seguridad sobre el usuario que se esta editando:
   const editandoAsiMismo = id === adminUser.id
   if (editandoAsiMismo) {
-    // El admin puede editar su propio nombre, pero NO puede sacarse el rol
-    // admin ni desactivarse (evita quedarse afuera de su propio sistema).
     if (parsed.data.rol !== ROL.ADMIN) {
       return { ok: false, error: "No podés quitarte a vos mismo el rol admin" }
     }
@@ -151,5 +137,42 @@ export async function resetPasswordUsuario(id: string, input: PasswordResetInput
     userId: adminUser.id,
   })
 
+  return { ok: true }
+}
+
+// Hard delete de usuario: borra de auth.users → cascade borra de profiles.
+// El historial de acciones que hizo ese usuario NO se borra (no hay FK).
+// El admin NO puede eliminarse a si mismo.
+export async function deleteUsuario(id: string): Promise<ActionResult> {
+  const guard = await requireAdmin()
+  if (!guard.ok) return { ok: false, error: guard.error }
+  const { supabase, user: adminUser } = guard
+
+  if (id === adminUser.id) {
+    return { ok: false, error: "No podés eliminarte a vos mismo" }
+  }
+
+  // Snapshot para el historial antes de borrar
+  const { data: victim } = await supabase
+    .from("profiles")
+    .select("email, nombre, rol")
+    .eq("id", id)
+    .maybeSingle()
+
+  const admin = createServiceRoleClient()
+
+  const { error } = await admin.auth.admin.deleteUser(id)
+  if (error) return { ok: false, error: error.message }
+
+  await logHistorial(supabase, {
+    tipo: TIPO_EVENTO.NOTA,
+    descripcion: `Usuario eliminado · ${victim?.email ?? id}`,
+    entidadTipo: "usuario",
+    entidadId: id,
+    payload: victim ?? { note: "profile no encontrado al momento del delete" },
+    userId: adminUser.id,
+  })
+
+  revalidatePath("/usuarios")
   return { ok: true }
 }

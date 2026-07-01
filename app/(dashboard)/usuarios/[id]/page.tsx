@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react"
 import { createServerClient } from "@/lib/supabase/server"
 import { Badge } from "@/components/ui/badge"
 import { UsuarioEditForm } from "@/components/usuarios/UsuarioEditForm"
+import { DeleteUsuarioButton } from "@/components/usuarios/DeleteUsuarioButton"
 import { ROL } from "@/lib/constants"
 import { formatFechaHora } from "@/lib/utils"
 
@@ -88,6 +89,22 @@ export default async function UsuarioDetallePage({
         <p className="text-xs font-mono text-tp-muted">
           Creado {formatFechaHora(t.created_at)} · Actualizado {formatFechaHora(t.updated_at)}
         </p>
+
+        <section className="pt-6 border-t border-tp-line-soft space-y-3">
+          <h2 className="font-display text-xl font-semibold text-tp-red">
+            Zona de peligro
+          </h2>
+          <p className="text-sm text-tp-secondary max-w-lg">
+            Borrar el usuario elimina su acceso al sistema. El historial de acciones que
+            realizó queda preservado para auditoría.
+          </p>
+          <DeleteUsuarioButton
+            usuarioId={t.id}
+            usuarioEmail={t.email}
+            disabled={isSelf}
+            disabledReason={isSelf ? "No podés eliminarte a vos mismo." : undefined}
+          />
+        </section>
       </div>
     </div>
   )
