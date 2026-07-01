@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { OrdenForm } from "@/components/ordenes/OrdenForm"
 import { CambiarEstadoOrden } from "@/components/ordenes/CambiarEstadoOrden"
 import { AsignarTecnicoOrden } from "@/components/ordenes/AsignarTecnicoOrden"
+import { ItemsOrden } from "@/components/ordenes/ItemsOrden"
 import { ROL } from "@/lib/constants"
 import { formatFecha, formatFechaHora } from "@/lib/utils"
 import { ESTADO_ORDEN_LABEL, ESTADO_ORDEN_VARIANT, PRIORIDAD_LABEL, PRIORIDAD_VARIANT } from "@/lib/ordenes-ui"
@@ -185,9 +186,14 @@ export default async function OrdenDetallePage({
           )}
         </div>
 
-        <section className="rounded-xl border border-tp-line-soft bg-tp-card p-6 font-mono text-sm text-tp-muted">
-          [ Servicios y repuestos imputados · próxima entrega (Ola B.1b) ]
-        </section>
+        <ItemsOrden
+          ordenId={o.id}
+          puedeEditar={
+            (esAdmin || o.tecnico_asignado_id === user!.id)
+            && o.estado !== "ENTREGADA"
+            && o.estado !== "CANCELADA"
+          }
+        />
 
         {o.notas_internas && (
           <section className="rounded-xl border border-tp-line-soft bg-tp-card p-5">
