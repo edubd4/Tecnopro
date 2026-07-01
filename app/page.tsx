@@ -1,6 +1,18 @@
-import Link from 'next/link'
+import Link from "next/link"
+import { redirect } from "next/navigation"
+import { createServerClient } from "@/lib/supabase/server"
 
-export default function Home() {
+export default async function Home() {
+  const supabase = await createServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  // Si ya está autenticado, mandamos derecho al panel
+  if (user) {
+    redirect("/panel")
+  }
+
   return (
     <main className="tp-circuit min-h-screen flex items-center justify-center px-6">
       <div className="max-w-xl text-center space-y-8">
@@ -17,14 +29,14 @@ export default function Home() {
         </div>
 
         <h1 className="font-display text-4xl md:text-5xl font-bold leading-tight">
-          Toda tu operación,{' '}
+          Toda tu operación,{" "}
           <span className="bg-tp-grad bg-clip-text text-transparent">
             en un solo lugar.
           </span>
         </h1>
 
         <p className="text-tp-secondary">
-          Sistema en construcción. Iniciá sesión para acceder al panel.
+          Iniciá sesión para acceder al panel.
         </p>
 
         <Link

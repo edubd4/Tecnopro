@@ -28,11 +28,14 @@ Base estructural lista para desarrollar módulos encima.
 - [x] Migración inicial Supabase: `profiles`, `configuracion`, `historial` (inmutable) + triggers
 - [x] CLAUDE.md, README.md, ROADMAP.md
 
-### 1.2 · Auth real
-- [ ] Form de login (`app/(auth)/login`) con Supabase Auth
-- [ ] Crear primer admin (Guillermo) en Supabase Auth
-- [ ] Componente `<UserMenu>` para logout
-- [ ] Endpoint `/api/auth/callback` si hace falta
+### 1.2 · Auth real ✅
+- [x] Form de login (`app/(auth)/login`) con Supabase Auth (client component)
+- [x] Guard en `(dashboard)/layout.tsx` — redirect a `/login` si no hay sesión
+- [x] Botón de logout (`components/SignOutButton.tsx`) + endpoint `/api/auth/signout`
+- [x] Header del dashboard con nombre + rol del usuario
+- [x] Landing `/` redirige al `/panel` si ya está autenticado
+- [x] Primitivos UI: `Button`, `Input`, `Label`, `Card`
+- [ ] **Manual del user**: crear primer admin (Guillermo) en Supabase Auth + promoverlo a `admin` en `profiles`
 
 ### 1.3 · Shell del dashboard
 - [ ] Sidebar con navegación a los 14 módulos (placeholders)
