@@ -26,7 +26,7 @@ async function requireAdmin() {
   if (!profile?.activo || profile.rol !== ROL.ADMIN) {
     return { supabase, user, error: "Solo un admin puede realizar esta acción" as const }
   }
-  return { supabase, user, error: null as const }
+  return { supabase, user, error: null }
 }
 
 export async function createCliente(input: ClienteInput): Promise<ActionResult> {
