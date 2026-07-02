@@ -71,7 +71,7 @@ Núcleo transaccional.
 
 - [x] **02 · Órdenes de trabajo** — CRUD + estado + asignar técnico + items imputados (servicios + repuestos con movimiento SALIDA automático via RPC transaccional) + cálculo de total
 - [x] **04 · Turnos + calendario** — CRUD + vista semana con grilla horaria + vista lista + navegación entre semanas + detección de superposición por técnico via RPC con tstzrange
-- [ ] **05 · Presupuestos** — items, márgenes, estado (BORRADOR/ENVIADO/...), validez
+- [x] **05 · Presupuestos** — items (servicios + repuestos con margen sugerido), estado (BORRADOR/ENVIADO/APROBADO/RECHAZADO/VENCIDO), auto-timestamps enviado_at/respondido_at, mensaje template para copiar al cliente (Fase 3 lo reemplaza por IA)
 
 ### Ola C · Plata
 Depende de órdenes y cobros.
