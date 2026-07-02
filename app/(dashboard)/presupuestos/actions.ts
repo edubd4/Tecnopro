@@ -18,7 +18,12 @@ import {
 } from "@/lib/validators/presupuesto"
 import { logHistorial } from "@/lib/historial"
 import { TIPO_EVENTO } from "@/lib/constants"
-import { generarMensajePresupuestoTemplate } from "@/lib/mensaje-presupuesto"
+import {
+  generarMensajePresupuestoTemplate,
+  generarMensajePresupuestoIA,
+  type DatosMensajePresupuesto,
+} from "@/lib/mensaje-presupuesto"
+import { hayIADisponible } from "@/lib/anthropic"
 
 type ActionResult<T = void> = { ok: false; error: string } | { ok: true; data?: T }
 
@@ -329,7 +334,7 @@ export async function generarMensajeAutomatico(presupuestoId: string): Promise<A
   const subtotalRepuestos = repuestos.reduce((sum, r) => sum + r.precio * r.cantidad, 0)
   const total = subtotalServicios + subtotalRepuestos
 
-  const mensaje = generarMensajePresupuestoTemplate({
+  const datos: DatosMensajePresupuesto = {
     negocioNombre: (configRes.data?.valor as string | null) ?? "TECNOPRO",
     clienteNombre,
     presupuestoId: p.id_publico,
@@ -341,7 +346,34 @@ export async function generarMensajeAutomatico(presupuestoId: string): Promise<A
     subtotalRepuestos,
     total,
     validezHasta: p.validez_hasta,
-  })
+  }
+
+  // Intentar generar con IA (Claude Haiku). Si no hay API key o falla, cae
+  // al template estático. Ninguno rompe la operación completa.
+  let mensaje: string
+  let source: "ia" | "template" = "template"
+  let tokensInput: number | null = null
+  let tokensOutput: number | null = null
+  let modelUsado: string | null = null
+  let iaError: string | null = null
+
+  if (hayIADisponible()) {
+    try {
+      const ia = await generarMensajePresupuestoIA(datos)
+      mensaje = ia.mensaje
+      source = "ia"
+      tokensInput = ia.tokensInput
+      tokensOutput = ia.tokensOutput
+      modelUsado = ia.model
+    } catch (err) {
+      // No rompemos el flujo — usamos template. Logueamos el error para debug.
+      iaError = err instanceof Error ? err.message : String(err)
+      console.error("[generarMensajeAutomatico] IA falló, fallback a template:", iaError)
+      mensaje = generarMensajePresupuestoTemplate(datos)
+    }
+  } else {
+    mensaje = generarMensajePresupuestoTemplate(datos)
+  }
 
   // Guardar en la DB
   const { error } = await supabase
@@ -352,9 +384,18 @@ export async function generarMensajeAutomatico(presupuestoId: string): Promise<A
 
   await logHistorial(supabase, {
     tipo: TIPO_EVENTO.MENSAJE_IA,
-    descripcion: `Mensaje generado para presupuesto ${p.id_publico}`,
+    descripcion: source === "ia"
+      ? `Mensaje generado con IA para presupuesto ${p.id_publico}`
+      : `Mensaje generado con template para presupuesto ${p.id_publico}`,
     entidadTipo: "presupuesto",
     entidadId: p.id_publico,
+    payload: {
+      source,
+      tokens_input: tokensInput,
+      tokens_output: tokensOutput,
+      model: modelUsado,
+      ia_error: iaError,
+    },
     userId: user.id,
   })
 
