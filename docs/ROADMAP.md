@@ -88,7 +88,6 @@ Para futuras fases comerciales según la propuesta:
 - Tesorería completa (flujo proyectado, conciliación bancaria)
 - Analytics avanzados configurables (dashboards personalizables por Guillo)
 - IA con **acciones directas** (asignar turnos, mover órdenes, crear clientes desde NL)
-- Integración WhatsApp Business API (envío automático de mensajes)
 - Google Calendar / Calendly para turnos
 - AFIP / Monotributo / IVA (facturación electrónica)
 - App nativa (React Native / Expo)
