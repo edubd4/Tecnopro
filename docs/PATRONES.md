@@ -294,13 +294,319 @@ En la UI, `puedeEditar` controla qué botones aparecen. En SQL, opcional agregar
 
 ---
 
+## Patrón · Movimientos inmutables (append-only)
+
+Consolidado en Ola C. Aplica a `historial`, `repuestos_movimientos`, `movimientos_caja`, `gastos`.
+
+```sql
+create or replace function public.<tabla>_block_mutations()
+returns trigger language plpgsql as $$
+begin
+  raise exception '<tabla> es inmutable: % no permitido. Registrar un nuevo movimiento (AJUSTE) para corregir.', TG_OP;
+end;
+$$;
+
+create trigger <tabla>_no_update
+  before update on public.<tabla>
+  for each row execute function public.<tabla>_block_mutations();
+
+create trigger <tabla>_no_delete
+  before delete on public.<tabla>
+  for each row execute function public.<tabla>_block_mutations();
+```
+
+**Regla**: correcciones = nuevo movimiento con origen `AJUSTE`. Si mañana descubrís que un gasto fue $3000 no $5000, no editás — hacés un movimiento_caja AJUSTE por $2000 en la dirección compensatoria. Beneficio: auditoría real, cero pérdida de historia.
+
+**Regla de UI**: en la lista mostrar el badge "Inmutable" o mensaje "Los movimientos son append-only — para corregir, registrá un ajuste."
+
+---
+
+## Patrón · RPC transaccional multi-tabla
+
+Usado en `imputar_repuesto_a_orden` (Ola B), `cobrar_orden` (Ola C.1), `registrar_gasto` (Ola C.2).
+
+**Cuándo**: cuando una acción del usuario requiere insertar en **2+ tablas** que deben quedar consistentes (o ambas se insertan, o ninguna).
+
+Ejemplo `registrar_gasto`:
+
+```sql
+create or replace function public.registrar_gasto(
+  p_categoria_id bigint, p_monto numeric, p_descripcion text,
+  p_fecha date, p_metodo_pago metodo_pago, p_notas text
+)
+returns uuid language plpgsql security invoker as $$
+declare
+  v_categoria_nombre text;
+  v_mov_id uuid;
+  v_gasto_id uuid;
+begin
+  -- Validaciones defensivas
+  if auth.uid() is null then raise exception 'No autenticado'; end if;
+  if p_monto is null or p_monto <= 0 then raise exception 'Monto invalido'; end if;
+
+  select nombre into v_categoria_nombre
+    from public.categorias_gasto where id = p_categoria_id and activo = true;
+  if v_categoria_nombre is null then raise exception 'Categoria no encontrada o inactiva'; end if;
+
+  -- Paso 1: crear movimiento en caja
+  insert into public.movimientos_caja (tipo, origen, monto, metodo_pago, descripcion, created_by)
+  values ('EGRESO', 'GASTO', p_monto, p_metodo_pago,
+          v_categoria_nombre || ' · ' || p_descripcion, auth.uid())
+  returning id into v_mov_id;
+
+  -- Paso 2: crear gasto con link al movimiento (FK NOT NULL garantiza atomicidad semántica)
+  insert into public.gastos (categoria_id, monto, descripcion, fecha, notas, movimiento_id, created_by)
+  values (p_categoria_id, p_monto, p_descripcion, p_fecha, p_notas, v_mov_id, auth.uid())
+  returning id into v_gasto_id;
+
+  return v_gasto_id;
+end;
+$$;
+```
+
+**Desde el action**:
+```ts
+const { data: gastoId, error } = await supabase.rpc("registrar_gasto", { ... })
+if (error || !gastoId) return { ok: false, error: error?.message ?? "..." }
+```
+
+Postgres hace rollback automático si algo falla. Cero código de compensación en TS. Ver `tecnopro/patron-rpc-transaccional` en engram.
+
+---
+
+## Patrón · Vista SQL como capa de reporte
+
+Introducido en Ola C.3 (`ordenes_con_saldo` en migración 0012). Sin nuevas tablas — solo query almacenada.
+
+**Cuándo usarlo**:
+- Combinás 2+ tablas en una consulta que necesitás **repetidamente** desde la app.
+- Los reportes necesitan campos derivados (sumas, restas, ratios).
+- Querés que otras vistas del sistema (Panel, Alertas, Tesorería) usen la misma lógica sin duplicarla.
+
+Ejemplo:
+```sql
+create or replace view public.ordenes_con_saldo as
+with items_por_orden as (
+  select o.id, o.id_publico, o.cliente_id, o.estado,
+         coalesce((select sum(precio * cantidad) from public.orden_servicios where orden_id = o.id), 0)
+         + coalesce((select sum(precio_unitario * cantidad) from public.orden_repuestos where orden_id = o.id), 0)
+         as total
+  from public.ordenes o
+),
+cobros_por_orden as (
+  select orden_id, sum(monto)::numeric(14,2) as cobrado
+  from public.movimientos_caja
+  where tipo = 'INGRESO' and origen = 'COBRO_ORDEN' and orden_id is not null
+  group by orden_id
+)
+select i.*, coalesce(c.cobrado, 0) as cobrado,
+       (i.total - coalesce(c.cobrado, 0)) as saldo_pendiente
+from items_por_orden i
+left join cobros_por_orden c on c.orden_id = i.id;
+
+grant select on public.ordenes_con_saldo to authenticated;
+revoke all on public.ordenes_con_saldo from anon;
+```
+
+**RLS de la vista**: hereda RLS de las tablas base. Si `movimientos_caja` es admin-only y `ordenes` es role-based, la vista termina siendo efectivamente admin-only. No hay que agregar policies a la vista.
+
+**Cuándo NO usar vista** (usar query directa en el app):
+- Filtros muy variables por caller.
+- Volumen chico y query no reusada.
+
+---
+
+## Patrón · TZ safety con string ISO en fechas server → client
+
+Descubierto durante QA de Turnos (fix del PR#14).
+
+**Problema**: pasar `Date` de server (UTC en Vercel) a client (AR en UTC-3) por props RSC hace que `.getDate()` en client devuelva el día anterior. Aritmética con fechas queda desalineada — bugs off-by-one y "el botón no funciona" cuando la URL resultante coincide accidentalmente con el URL actual.
+
+**Regla**: nunca pasar `Date` como prop de server a client. Serializar como string ISO `"YYYY-MM-DD"`.
+
+```tsx
+// Server component
+import { toISODate } from "@/lib/fechas"
+<MyClientComponent weekStartISO={toISODate(weekStart)} />
+
+// Client component
+function addDaysISO(iso: string, days: number): string {
+  const d = new Date(`${iso}T12:00:00`)  // mediodía para dar margen a ambos lados
+  d.setDate(d.getDate() + days)
+  return toISODate(d)
+}
+```
+
+**Regla dura**: `T12:00:00` (mediodía) en vez de `T00:00:00` al reconstruir. Con `T00:00`, cualquier TZ negativa (AR) retrocede al día anterior. Con `T12:00`, hay 12h de margen a cada lado, suficiente para toda TZ realista.
+
+Ver `tecnopro/gotcha-tz-drift-server-client` en engram.
+
+---
+
+## Patrón · Charts en SVG/CSS puro (sin lib externa)
+
+Usado en `/analytics` (Ola D). Cero dependencias — solo divs con width/height calculados.
+
+**Barras horizontales** (`HorizontalBars`):
+```tsx
+const max = Math.max(...items.map(i => i.value), 1)
+{items.map(item => {
+  const pct = Math.max((item.value / max) * 100, 2)  // mínimo 2% para que se vea aunque sea 0
+  return (
+    <div className="h-2 rounded-full bg-tp-surface-mid overflow-hidden">
+      <div className={`h-full ${item.color}`} style={{ width: `${pct}%` }} />
+    </div>
+  )
+})}
+```
+
+**Barras verticales agrupadas** (`MonthlyFlow`, 2 series por mes):
+```tsx
+<div className="grid" style={{ gridTemplateColumns: `repeat(${data.length}, minmax(0, 1fr))` }}>
+  {data.map(m => (
+    <div className="flex items-end gap-1 h-40">
+      <div style={{ height: `${Math.max((m.ingresos / max) * heightPx, 2)}px` }} />
+      <div style={{ height: `${Math.max((m.egresos / max) * heightPx, 2)}px` }} />
+    </div>
+  ))}
+</div>
+```
+
+**Cuándo migrar a Recharts/Chart.js**: cuando aparezca la necesidad de zoom, tooltips ricos, animaciones o exportar imagen. Para MVP: no vale la pena la dep.
+
+---
+
+## Patrón · Filtro de período por preset URL
+
+Usado en `/contabilidad` (Ola C.3).
+
+```tsx
+type Preset = "mes" | "anio" | "custom"
+
+function resolvePeriodo(params: { preset?: string; desde?: string; hasta?: string }) {
+  const preset: Preset =
+    params.preset === "anio" ? "anio" :
+    params.preset === "custom" ? "custom" :
+    "mes"
+  // ... construir { desde, hasta, label } según preset
+}
+
+// UI
+<PresetLink current={periodo.preset} value="mes" label="Mes actual" />
+<PresetLink current={periodo.preset} value="anio" label="Año actual" />
+<form action="/contabilidad" method="get">
+  <input type="hidden" name="preset" value="custom" />
+  <input type="date" name="desde" defaultValue={...} />
+  <input type="date" name="hasta" defaultValue={...} />
+  <button type="submit">Custom</button>
+</form>
+```
+
+**Regla**: el form custom usa **HTML form nativo** (`action` + `method="get"`), no `router.push`. Menos JS, funciona sin JS habilitado, más accesible.
+
+---
+
+## Patrón · Export CSV con BOM UTF-8
+
+En `lib/fechas.ts`:
+
+```ts
+export function escapeCSVCell(value: string | number | null | undefined): string {
+  if (value === null || value === undefined) return ""
+  const s = String(value)
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`
+  return s
+}
+
+export function toCSV(headers: string[], rows: (string | number | null | undefined)[][]): string {
+  const lines = [headers.map(escapeCSVCell).join(",")]
+  for (const row of rows) lines.push(row.map(escapeCSVCell).join(","))
+  return "﻿" + lines.join("\r\n")  // BOM UTF-8 al inicio
+}
+```
+
+**Regla dura**: el `﻿` (BOM UTF-8) al principio del archivo. Sin BOM, **Excel abre el CSV en cp1252** y las tildes/símbolos aparecen como caracteres raros ("cÃ³digo" en vez de "código"). Con BOM, Excel detecta UTF-8 automáticamente.
+
+**Regla de escape**: RFC 4180. Si la celda tiene coma, comilla o salto de línea, envolver en `"..."` y duplicar las comillas internas.
+
+**Response headers en la API route**:
+```ts
+new NextResponse(csv, {
+  headers: {
+    "Content-Type": "text/csv; charset=utf-8",
+    "Content-Disposition": `attachment; filename="tecnopro-libro-${desde}_${hasta}.csv"`,
+    "Cache-Control": "no-store",
+  },
+})
+```
+
+---
+
+## Patrón · Panel dual view por rol
+
+En `/panel` (Ola D):
+
+```tsx
+export default async function PanelPage() {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const { data: profile } = await supabase.from("profiles").select("nombre, rol").eq("id", user.id).single()
+  const esAdmin = profile?.rol === ROL.ADMIN
+
+  if (esAdmin) return <PanelAdmin nombre={profile.nombre ?? "Admin"} />
+  return <PanelTecnico nombre={profile.nombre ?? "Técnico"} userId={user.id} />
+}
+```
+
+**Regla**: `PanelAdmin` y `PanelTecnico` son **async server components** independientes. Cada uno hace sus propias queries (con `Promise.all`). Nada de condicional en la UI para cada sección — es más limpio tener 2 componentes hermanos con la lógica propia.
+
+---
+
+## Patrón · Contar filas eficientemente
+
+En Supabase para KPIs:
+```ts
+supabase.from("ordenes").select("id", { count: "exact", head: true })
+```
+
+`head: true` evita traer los rows. Solo devuelve el count. Óptimo para tarjetas KPI del panel.
+
+---
+
+## Gotcha · Supabase-js no compara dos columnas de la misma tabla
+
+Descubierto en Ola D (Alertas + Panel — stock bajo).
+
+**Problema**: no podés hacer `.lte("stock_actual", "stock_minimo")` en Supabase-js. `.lte` compara con un valor literal, no con otra columna.
+
+**Fix**: traer las filas con un filtro server-side laxo y filtrar en JS:
+```ts
+const { data } = await supabase
+  .from("repuestos")
+  .select("stock_actual, stock_minimo")
+  .eq("activo", true)
+  .gt("stock_minimo", 0)  // no traemos los que tienen stock_minimo=0
+
+const bajo = data.filter(r => Number(r.stock_actual) <= Number(r.stock_minimo))
+```
+
+Si el volumen crece: crear vista SQL como `repuestos_bajo_stock` (todavía no es necesario).
+
+Ver `tecnopro/gotcha-supabase-column-comparison` en engram.
+
+---
+
 ## Reglas de proceso
 
 1. **`npm run build`** local antes del push (pesca errores de TS/ESLint que Vercel también pescaría).
 2. **`npm run dev`** local para probar interactividad (el build NO ejecuta el código).
 3. **Preview de Vercel verde antes de mergear** — no mergear "porque el build salió verde"; abrir el preview URL y clickear.
 4. **Migración SQL aplicada antes del merge** — Guillermo/Eduardo la corre en el SQL Editor.
-5. **`mem_save`** después de cada patrón/decisión/gotcha con `project: "tecnopro"`.
+5. **Post-migración con CREATE TYPE / CREATE VIEW**: si aparece error "Could not find the table X in the schema cache", correr `NOTIFY pgrst, 'reload schema';` en el SQL Editor. PostgREST puede quedar con la cache vieja.
+6. **`mem_save`** después de cada patrón/decisión/gotcha con `project: "tecnopro"`.
+7. **Fechas server → client como string ISO** siempre. Ver patrón · TZ safety.
 
 ---
 
@@ -308,11 +614,28 @@ En la UI, `puedeEditar` controla qué botones aparecen. En SQL, opcional agregar
 
 Buscar con `mem_search "tecnopro/..."`:
 
+### Setup e hitos
 - `tecnopro/kickoff` — setup inicial
 - `tecnopro/setup-decisions` — decisiones de arranque
+- `tecnopro/fase-*` — hitos por fase
+- `tecnopro/ola-c1-caja` · `tecnopro/ola-c2-gastos` · `tecnopro/ola-c3-tesoreria-contabilidad` · `tecnopro/ola-d-mvp-completo`
+
+### Patrones
 - `tecnopro/patron-modulo-maestro` — patrón de módulo (Clientes fue el molde)
 - `tecnopro/patron-discriminated-union-ok` — result types con `ok: boolean`
 - `tecnopro/patron-table-row-clickable` — filas de tabla clickeables
+- `tecnopro/patron-rpc-transaccional` — RPC multi-tabla
+- `tecnopro/patron-append-only` — movimientos inmutables
+- `tecnopro/patron-vista-sql-reporte` — vistas para reporting
+- `tecnopro/patron-tz-safety-iso-strings` — fechas server→client
+- `tecnopro/patron-csv-bom-excel` — export CSV con BOM
+
+### Decisiones
+- `tecnopro/decision-crud-delete-strategy` — soft vs hard delete
+- `tecnopro/decision-charts-svg-no-lib` — no meter Recharts en MVP
+- `tecnopro/decision-categorias-gasto-configurables` — tabla vs enum
+
+### Gotchas
 - `tecnopro/gotcha-server-client-serialization` — íconos como props server→client
 - `tecnopro/gotcha-route-groups-collision` — `app/page.tsx` vs `app/(grupo)/page.tsx`
 - `tecnopro/gotcha-rls-recursion` — recursión infinita en policies (0003)
@@ -320,6 +643,6 @@ Buscar con `mem_search "tecnopro/..."`:
 - `tecnopro/gotcha-ts-as-const-null` — `null as const` inválido
 - `tecnopro/gotcha-rsc-event-handlers` — onChange en server component
 - `tecnopro/gotcha-vercel-env-vars-build-time` — env vars al deploy
-- `tecnopro/fase-1.2-auth` · `1.3-dashboard-shell` · `2-a1-...` · etc. — hitos
-- `tecnopro/decision-crud-delete-strategy` — soft vs hard delete
-- `tecnopro/estado-actual` — snapshot de sesión
+- `tecnopro/gotcha-tz-drift-server-client` — Date server → client rompe navegación
+- `tecnopro/gotcha-supabase-column-comparison` — no se pueden comparar dos columnas
+- `tecnopro/gotcha-postgrest-schema-cache` — NOTIFY pgrst reload schema post-migración

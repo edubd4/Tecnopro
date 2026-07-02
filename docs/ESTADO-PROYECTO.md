@@ -2,7 +2,7 @@
 
 Documento maestro para **retomar el proyecto en una sesión nueva**. Se actualiza al final de cada sub-fase.
 
-**Última actualización**: cierre de Ola B (Órdenes + Turnos + Presupuestos)
+**Última actualización**: cierre del **MVP completo** (Fase 2 · Olas A + B + C + D). 14/14 módulos entregados. Próximo paso: **Fase 3 · IA integrada**.
 
 ---
 
@@ -11,12 +11,14 @@ Documento maestro para **retomar el proyecto en una sesión nueva**. Se actualiz
 Cualquier Claude que abra este repo en una sesión limpia debería:
 
 1. **Leer este archivo primero** (`docs/ESTADO-PROYECTO.md`) para tener el contexto.
-2. **Levantar memoria persistente**: `mem_search "tecnopro"` — hay ~20 observations guardadas con decisiones arquitectónicas, gotchas y patrones.
+2. **Levantar memoria persistente**: `mem_search "tecnopro"` — hay observations guardadas con decisiones arquitectónicas, gotchas y patrones (ver lista al final de [PATRONES.md](./PATRONES.md)).
 3. **Leer `CLAUDE.md`** en la raíz para las convenciones de código.
 4. **Leer `docs/PATRONES.md`** para los patrones establecidos.
 5. **Leer `docs/ROADMAP.md`** para saber qué está hecho y qué falta.
 
 Si Eduardo dice "seguí con TECNOPRO", empezar por los pasos de arriba.
+
+Para el manual orientado a usuarios (Guillo y su equipo), ver `docs/MANUAL-USUARIO.md`.
 
 ---
 
@@ -35,7 +37,7 @@ Si Eduardo dice "seguí con TECNOPRO", empezar por los pasos de arriba.
 - Supabase Postgres + Auth (RLS ON desde día 1)
 - Tailwind CSS con tokens `tp-*` (cyan/teal/ink) + Radix + Zod
 - Vercel Production
-- Anthropic SDK (Claude Haiku) — Fase 3, aún no integrado
+- Anthropic SDK (Claude Haiku) — **Fase 3, aún no integrado**
 
 ### Personas del sistema
 - **Eduardo** (`edubd4`) — dev principal, owner del repo, admin en Supabase mientras dure el desarrollo
@@ -44,7 +46,7 @@ Si Eduardo dice "seguí con TECNOPRO", empezar por los pasos de arriba.
 
 ---
 
-## Estado por módulo
+## Estado por módulo — **MVP COMPLETO ✅**
 
 | Ola | Módulo | Estado | Migración | Nota |
 |---|---|---|---|---|
@@ -57,40 +59,42 @@ Si Eduardo dice "seguí con TECNOPRO", empezar por los pasos de arriba.
 | B | Órdenes | ✅ | 0006 + 0007 | Base + items con RPC transaccional stock+orden |
 | B | Turnos | ✅ | 0008 | Vista semanal + overlap detection (tstzrange) |
 | B | Presupuestos | ✅ | 0009 | Items + margen sugerido + mensaje template (firma preparada para IA) |
-| C | Caja | ⏳ | — | Ingresos/egresos, saldo, cierre diario |
-| C | Gastos | ⏳ | — | Egresos por categoría con comprobante |
-| C | Tesorería | ⏳ | — | Cobros pendientes, pagos por vencer |
-| C | Contabilidad | ⏳ | — | Libro + exportación CSV |
-| D | Panel principal | ⏳ | — | KPIs, alertas, resumen del día |
-| D | Analytics | ⏳ | — | Órdenes por estado/técnico, tendencias |
-| D | Alertas | ⏳ | — | Pagos, entregas, stock bajo |
+| C | Caja | ✅ | 0010 | Movimientos inmutables + saldo view + RPC cobrar_orden |
+| C | Gastos | ✅ | 0011 | Categorías configurables + RPC registrar_gasto (crea EGRESO en caja) |
+| C | Tesorería | ✅ | 0012 (view) | Vista `ordenes_con_saldo` + resumen mensual |
+| C | Contabilidad | ✅ | — | Libro filtrable + export CSV con BOM UTF-8 |
+| D | Panel principal | ✅ | — | KPIs con dual view admin/técnico |
+| D | Analytics | ✅ | — | 4 charts en SVG/CSS puro sin lib externa |
+| D | Alertas | ✅ | — | 4 secciones (entregas, saldos, stock, presupuestos) |
 
-**14/14 módulos del MVP** — 9 listos, 5 pendientes (Ola C + Ola D).
+**14/14 módulos del MVP** — todos entregados.
 
 ---
 
-## Próximo paso — dónde arrancar
+## Próximo paso — **Fase 3 · IA integrada**
 
-**Ola C · Plata** — 4 módulos que Guillermo va a usar todo el día:
+### Alcance de Fase 3
 
-1. **Caja**: ingresos por cobro de órdenes + egresos varios, saldo en vivo, cierre diario. Tabla `movimientos_caja` con `tipo` (INGRESO/EGRESO), `origen` (COBRO_ORDEN/GASTO/AJUSTE/APERTURA/CIERRE/OTRO), `metodo_pago`, `orden_id` opcional. Los movimientos son inmutables (patrón historial).
+Reemplazar templates estáticos por generación con **Claude Haiku** vía Anthropic SDK. Tres casos de uso principales:
 
-2. **Gastos**: entidad separada con categorías configurables + adjunto de comprobante (Supabase Storage). Cada gasto genera un `movimiento_caja` de tipo EGRESO automáticamente.
+1. **Mensaje de presupuesto** — reemplaza `generarMensajePresupuestoTemplate` en `lib/mensaje-presupuesto.ts`. El swap ya está preparado (firma async lista para cambiar solo la implementación).
+2. **Avisos automáticos a clientes** — "tu equipo está listo", "demora en repuesto", "presupuesto por vencer". Se dispara desde cambios de estado.
+3. **Consultas internas en NL** — "órdenes que vencen esta semana", "cuánto facturé en redes este mes". Un input en el panel que devuelve respuestas contextualizadas.
 
-3. **Tesorería básica**: NO es una tabla nueva. Vista compuesta que muestra:
-   - Órdenes con cobro pendiente (leyendo `ordenes` + suma de items)
-   - Pagos a vencer en los próximos N días (`stock_alerta_dias` de config)
-   - Resumen mensual de ingresos vs egresos
+### Setup técnico requerido
 
-4. **Contabilidad básica**: reporte + exportación CSV del libro de ingresos/egresos.
+1. **API Key**: agregar `ANTHROPIC_API_KEY` como env var en Vercel (Production + Preview).
+2. **Endpoint API**: crear `app/api/ia/generate/route.ts` con auth check propio (nunca desde client component).
+3. **Rate limiting**: por usuario, para evitar sorpresas de facturación.
+4. **Logging de consumo**: agregar campo `costo_tokens` al `historial` (payload) para trackear uso por usuario.
 
-### Sugerencia de PRs para Ola C
+### Sugerencia de PRs para Fase 3
 
-- **PR 2C.1** — Caja (tabla + actions + UI). Se conecta con órdenes: al cobrar una orden APROBADA, se crea el ingreso.
-- **PR 2C.2** — Gastos (tabla + categorías configurables + adjunto). Cada gasto crea egreso en caja.
-- **PR 2C.3** — Tesorería + Contabilidad (vistas + exportación). Sin tablas nuevas.
+- **PR 3.1** — Endpoint `/api/ia/generate` con Anthropic SDK + swap de mensaje de presupuesto. Es el uso más simple y ya está preparado. Ideal para validar la conexión y el flujo.
+- **PR 3.2** — Avisos de estado. Trigger desde cambio de estado de orden.
+- **PR 3.3** — Consultas en NL. Requiere prompt engineering con contexto del user y de la DB.
 
-Estimado: ~3 PRs, similar a Ola A.
+Estimado: 2-3 semanas de trabajo. Requiere validación de consumo/costo con Guillo.
 
 ---
 
@@ -115,6 +119,18 @@ export async function generarMensajePresupuestoIA(d: DatosMensajePresupuesto): P
 ```
 
 El action `generarMensajeAutomatico` cambia solo la función que llama. UI cero cambios.
+
+---
+
+## Fase 4 · Capacitación y entrega
+
+Después de Fase 3:
+
+1. Smoke tests end-to-end
+2. Capacitación con Guillermo y técnicos
+3. Período de prueba con datos reales
+4. Ajustes según feedback
+5. **Entrega final**: transferencia de ownership de Supabase y Vercel a la cuenta del cliente
 
 ---
 
@@ -150,6 +166,9 @@ El action `generarMensajeAutomatico` cambia solo la función que llama. UI cero 
 4. **Migraciones SQL nuevas se aplican manualmente** en el SQL Editor de Supabase antes del merge (o inmediatamente después). No hay CI que las aplique automáticamente todavía.
 5. **Un PR por sub-fase** — módulos grandes se parten (Ordenes fue B.1a + B.1b, por ejemplo).
 6. **`stopPropagation` en cualquier control dentro de una `<TableRow>` clickeable**.
+7. **Post-migración: `NOTIFY pgrst, 'reload schema';`** en el SQL Editor si aparecen errores "Could not find the table X in the schema cache". PostgREST puede quedar con la cache vieja después de un CREATE TYPE o CREATE VIEW.
+8. **Fechas server → client como string ISO `YYYY-MM-DD`**, nunca como `Date` object. TZ drift entre UTC (server Vercel) y AR (client UTC-3) mete off-by-one bugs. Reconstruir con `T12:00:00` en client para dar margen.
+9. **Supabase-js no compara dos columnas de la misma tabla** (ej. `stock_actual <= stock_minimo`). Traer filas relevantes y filtrar en JS, o crear vista SQL si el volumen lo justifica.
 
 ---
 
@@ -169,16 +188,28 @@ El action `generarMensajeAutomatico` cambia solo la función que llama. UI cero 
 | #10 | feat(ordenes): fila clickeable + cambio de estado inline + link al cliente | UX |
 | #11 | feat(turnos): CRUD + vista semana + deteccion de superposiciones (Ola B.2) | 2B |
 | #12 | feat(presupuestos): modulo completo con margen, estados y mensaje template (Ola B.3) | 2B |
+| #13 | chore(docs): snapshot de estado + patrones consolidados post-Ola B | docs |
+| #14 | feat(caja) + fix(turnos): modulo Caja + fix navegador de semana por drift de TZ | 2C.1 + fix |
+| #15 | feat(gastos): modulo Gastos con RPC transaccional a caja (Ola C.2) | 2C.2 |
+| #16 | feat(tesoreria, contabilidad): vistas de reporting + export CSV (Ola C.3) | 2C.3 |
+| #17 | feat(panel, analytics, alertas): cierre del MVP (Ola D) | 2D |
 
 ---
 
-## Backlog capturado del feedback del usuario
+## Backlog acumulado (post-MVP, no bloqueante)
 
-- **UX de filas clickeables**: aplicado en Órdenes (PR#10) y Presupuestos (PR#12). Pendiente aplicar a Clientes, Catálogo, Stock, Usuarios, Turnos (lista).
-- **Vista `/historial`** para el admin (ver todos los eventos loguéados sin ir al SQL Editor).
-- **Filtro por técnico/prioridad** en la lista de órdenes.
-- **Convertir presupuesto aprobado a orden** (o pasar los items directo).
+Ordenado por prioridad relativa según valor para Guillo:
+
+1. **CRUD de categorías de gasto en UI** — por ahora se gestionan vía SQL Editor. Bajo impacto porque los 8 seeds cubren casi todo, pero es una asimetría del sistema.
+2. **Convertir presupuesto aprobado a orden** — con arrastre de items. Pedido explícito de Guillo, ahorra doble carga.
+3. **Vista `/historial`** para el admin — hoy la tabla `historial` está poblada pero solo se ve desde SQL Editor.
+4. **Filtro por técnico/prioridad en `/ordenes`** — la lista actualmente solo filtra por estado.
+5. **UX de filas clickeables** — aplicado en Órdenes y Presupuestos. Falta en Clientes, Catálogo, Stock, Usuarios, Turnos (lista).
+6. **Umbrales de `/alertas` a `configuracion`** — 30d saldos y 7d presupuestos están hardcoded como constants.
+7. **Comprobantes de gastos** — Fase 3 con Supabase Storage.
+8. **"Pagos por vencer" en Tesorería** — requiere tabla de vencimientos que no está en el MVP.
+9. **Filtros de fecha en `/caja`** — hoy trae últimos 200.
 
 ---
 
-**Fin del snapshot.** Ver [ROADMAP.md](./ROADMAP.md) para la vista de tareas y [PATRONES.md](./PATRONES.md) para las convenciones de código.
+**Fin del snapshot.** Ver [ROADMAP.md](./ROADMAP.md) para la vista de tareas y fases y [PATRONES.md](./PATRONES.md) para las convenciones de código. Para uso end-user, ver [MANUAL-USUARIO.md](./MANUAL-USUARIO.md).
