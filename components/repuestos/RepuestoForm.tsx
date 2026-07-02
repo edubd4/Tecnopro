@@ -6,6 +6,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { MoneyInput, NumberInput } from "@/components/ui/number-input"
 import { Textarea } from "@/components/ui/textarea"
 import { createRepuesto, updateRepuesto } from "@/app/(dashboard)/stock/actions"
 import type { RepuestoInput } from "@/lib/validators/repuesto"
@@ -109,39 +110,33 @@ export function RepuestoForm({ mode, repuestoId, initial }: Props) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="costo">Costo (ARS)</Label>
-            <Input
+            <MoneyInput
               id="costo"
-              type="number"
-              min="0"
-              step="0.01"
+              min={0}
               required
               value={form.costo}
-              onChange={(e) => update("costo", Number(e.target.value))}
+              onChange={(v) => update("costo", v ?? 0)}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="precio_venta">Precio venta (ARS)</Label>
-            <Input
+            <MoneyInput
               id="precio_venta"
-              type="number"
-              min="0"
-              step="0.01"
+              min={0}
               required
               value={form.precio_venta}
-              onChange={(e) => update("precio_venta", Number(e.target.value))}
+              onChange={(v) => update("precio_venta", v ?? 0)}
             />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="stock_minimo">Stock mínimo</Label>
-            <Input
+            <NumberInput
               id="stock_minimo"
-              type="number"
-              min="0"
-              step="1"
+              min={0}
               required
               value={form.stock_minimo}
-              onChange={(e) => update("stock_minimo", Number(e.target.value))}
+              onChange={(v) => update("stock_minimo", v ?? 0)}
             />
             <p className="text-[11px] text-tp-muted">
               Se muestra alerta cuando el stock actual baja de este valor.

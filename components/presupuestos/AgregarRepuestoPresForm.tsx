@@ -4,8 +4,8 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { MoneyInput, NumberInput } from "@/components/ui/number-input"
 import { Select } from "@/components/ui/select"
 import { agregarRepuestoAPresupuesto } from "@/app/(dashboard)/presupuestos/actions"
 
@@ -27,8 +27,8 @@ export function AgregarRepuestoPresForm({ presupuestoId, repuestos, margenPct }:
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [repuestoId, setRepuestoId] = useState("")
-  const [precio, setPrecio] = useState<string>("")
-  const [cantidad, setCantidad] = useState<string>("1")
+  const [precio, setPrecio] = useState<number | null>(null)
+  const [cantidad, setCantidad] = useState<number | null>(1)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
@@ -38,7 +38,7 @@ export function AgregarRepuestoPresForm({ presupuestoId, repuestos, margenPct }:
     if (r) {
       // Sugerimos costo × (1 + margen/100). El usuario puede sobreescribir.
       const sugerido = Number(r.costo) * (1 + margenPct / 100)
-      setPrecio(sugerido.toFixed(2))
+      setPrecio(Math.round(sugerido))
     }
   }
 
@@ -49,20 +49,24 @@ export function AgregarRepuestoPresForm({ presupuestoId, repuestos, margenPct }:
       setError("Elegí un repuesto")
       return
     }
+    if (precio === null || cantidad === null || cantidad <= 0) {
+      setError("Precio y cantidad válidos requeridos")
+      return
+    }
     startTransition(async () => {
       const result = await agregarRepuestoAPresupuesto({
         presupuesto_id: presupuestoId,
         repuesto_id: repuestoId,
-        precio_unitario: Number(precio),
-        cantidad: Number(cantidad),
+        precio_unitario: precio,
+        cantidad,
       })
       if (!result.ok) {
         setError(result.error)
         return
       }
       setRepuestoId("")
-      setPrecio("")
-      setCantidad("1")
+      setPrecio(null)
+      setCantidad(1)
       setOpen(false)
       router.refresh()
     })
@@ -98,26 +102,22 @@ export function AgregarRepuestoPresForm({ presupuestoId, repuestos, margenPct }:
           <Label htmlFor="pres_rep_precio" className="text-xs">
             Precio unit. (con margen {margenPct}%)
           </Label>
-          <Input
+          <MoneyInput
             id="pres_rep_precio"
-            type="number"
-            min="0"
-            step="0.01"
+            min={0}
             required
             value={precio}
-            onChange={(e) => setPrecio(e.target.value)}
+            onChange={setPrecio}
           />
         </div>
         <div className="sm:col-span-2 space-y-1">
           <Label htmlFor="pres_rep_cant" className="text-xs">Cantidad</Label>
-          <Input
+          <NumberInput
             id="pres_rep_cant"
-            type="number"
-            min="1"
-            step="1"
+            min={1}
             required
             value={cantidad}
-            onChange={(e) => setCantidad(e.target.value)}
+            onChange={setCantidad}
           />
         </div>
       </div>

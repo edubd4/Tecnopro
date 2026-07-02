@@ -4,8 +4,8 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { MoneyInput, NumberInput } from "@/components/ui/number-input"
 import { Select } from "@/components/ui/select"
 import { agregarServicioAOrden } from "@/app/(dashboard)/ordenes/items-actions"
 
@@ -25,8 +25,8 @@ export function AgregarServicioForm({ ordenId, servicios }: Props) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [servicioId, setServicioId] = useState("")
-  const [precio, setPrecio] = useState<string>("")
-  const [cantidad, setCantidad] = useState<string>("1")
+  const [precio, setPrecio] = useState<number | null>(null)
+  const [cantidad, setCantidad] = useState<number | null>(1)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
@@ -34,7 +34,7 @@ export function AgregarServicioForm({ ordenId, servicios }: Props) {
     setServicioId(e.target.value)
     // Prefill del precio con el precio_base del servicio elegido
     const s = servicios.find((x) => x.id === e.target.value)
-    if (s) setPrecio(String(s.precio_base))
+    if (s) setPrecio(s.precio_base)
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -44,12 +44,16 @@ export function AgregarServicioForm({ ordenId, servicios }: Props) {
       setError("Elegí un servicio")
       return
     }
+    if (precio === null || cantidad === null || cantidad <= 0) {
+      setError("Precio y cantidad válidos requeridos")
+      return
+    }
     startTransition(async () => {
       const result = await agregarServicioAOrden({
         orden_id: ordenId,
         servicio_id: servicioId,
-        precio: Number(precio),
-        cantidad: Number(cantidad),
+        precio,
+        cantidad,
       })
       if (!result.ok) {
         setError(result.error)
@@ -57,8 +61,8 @@ export function AgregarServicioForm({ ordenId, servicios }: Props) {
       }
       // Reset y cerrar
       setServicioId("")
-      setPrecio("")
-      setCantidad("1")
+      setPrecio(null)
+      setCantidad(1)
       setOpen(false)
       router.refresh()
     })
@@ -98,26 +102,22 @@ export function AgregarServicioForm({ ordenId, servicios }: Props) {
         </div>
         <div className="sm:col-span-3 space-y-1">
           <Label htmlFor="precio" className="text-xs">Precio (ARS)</Label>
-          <Input
+          <MoneyInput
             id="precio"
-            type="number"
-            min="0"
-            step="0.01"
+            min={0}
             required
             value={precio}
-            onChange={(e) => setPrecio(e.target.value)}
+            onChange={setPrecio}
           />
         </div>
         <div className="sm:col-span-2 space-y-1">
           <Label htmlFor="cantidad" className="text-xs">Cantidad</Label>
-          <Input
+          <NumberInput
             id="cantidad"
-            type="number"
-            min="1"
-            step="1"
+            min={1}
             required
             value={cantidad}
-            onChange={(e) => setCantidad(e.target.value)}
+            onChange={setCantidad}
           />
         </div>
       </div>

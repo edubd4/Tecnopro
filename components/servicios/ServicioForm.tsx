@@ -6,6 +6,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { MoneyInput, NumberInput } from "@/components/ui/number-input"
 import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { createServicio, updateServicio } from "@/app/(dashboard)/catalogo/actions"
@@ -87,27 +88,22 @@ export function ServicioForm({ mode, servicioId, initial }: Props) {
 
           <div className="space-y-2">
             <Label htmlFor="precio_base">Precio base (ARS)</Label>
-            <Input
+            <MoneyInput
               id="precio_base"
-              type="number"
-              min="0"
-              step="0.01"
+              min={0}
               required
               value={form.precio_base}
-              onChange={(e) => update("precio_base", Number(e.target.value))}
+              onChange={(v) => update("precio_base", v ?? 0)}
             />
           </div>
 
           <div className="space-y-2 md:col-span-2">
             <Label htmlFor="tiempo_estimado_min">Tiempo estimado (minutos)</Label>
-            <Input
+            <NumberInput
               id="tiempo_estimado_min"
-              type="number"
-              min="1"
-              value={form.tiempo_estimado_min ?? ""}
-              onChange={(e) =>
-                update("tiempo_estimado_min", e.target.value ? Number(e.target.value) : null)
-              }
+              min={1}
+              value={form.tiempo_estimado_min ?? null}
+              onChange={(v) => update("tiempo_estimado_min", v)}
               placeholder="Opcional"
             />
           </div>

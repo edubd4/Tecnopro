@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { MoneyInput } from "@/components/ui/number-input"
 import { Select } from "@/components/ui/select"
 import { cobrarOrden } from "@/app/(dashboard)/caja/actions"
 import { METODO_PAGO_LABEL } from "@/lib/caja-ui"
@@ -67,14 +68,12 @@ export function CobrarOrdenForm({ ordenId, ordenIdPublico, saldoSugerido }: Prop
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="space-y-2">
           <Label htmlFor="cobrar-monto">Monto (ARS) *</Label>
-          <Input
+          <MoneyInput
             id="cobrar-monto"
-            type="number"
-            min="0.01"
-            step="0.01"
+            min={1}
             required
-            value={monto || ""}
-            onChange={(e) => setMonto(Number(e.target.value))}
+            value={monto || null}
+            onChange={(v) => setMonto(v ?? 0)}
           />
         </div>
         <div className="space-y-2">

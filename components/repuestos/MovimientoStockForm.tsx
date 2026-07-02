@@ -3,8 +3,8 @@
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { NumberInput } from "@/components/ui/number-input"
 import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { registrarMovimiento } from "@/app/(dashboard)/stock/actions"
@@ -18,7 +18,7 @@ type Props = {
 export function MovimientoStockForm({ repuestoId, stockActual }: Props) {
   const router = useRouter()
   const [tipo, setTipo] = useState<MovimientoInput["tipo"]>("ENTRADA")
-  const [cantidad, setCantidad] = useState<string>("")
+  const [cantidad, setCantidad] = useState<number | null>(null)
   const [motivo, setMotivo] = useState<string>("")
   const [error, setError] = useState<string | null>(null)
   const [ok, setOk] = useState(false)
@@ -29,8 +29,7 @@ export function MovimientoStockForm({ repuestoId, stockActual }: Props) {
     setError(null)
     setOk(false)
 
-    const cantidadNum = Number(cantidad)
-    if (!Number.isFinite(cantidadNum) || cantidadNum < 0) {
+    if (cantidad === null || cantidad < 0) {
       setError("Cantidad inválida")
       return
     }
@@ -39,7 +38,7 @@ export function MovimientoStockForm({ repuestoId, stockActual }: Props) {
       const result = await registrarMovimiento({
         repuesto_id: repuestoId,
         tipo,
-        cantidad: cantidadNum,
+        cantidad,
         motivo: motivo || null,
       })
       if (!result.ok) {
@@ -47,7 +46,7 @@ export function MovimientoStockForm({ repuestoId, stockActual }: Props) {
         return
       }
       setOk(true)
-      setCantidad("")
+      setCantidad(null)
       setMotivo("")
       router.refresh()
     })
@@ -79,14 +78,12 @@ export function MovimientoStockForm({ repuestoId, stockActual }: Props) {
           <Label htmlFor="cantidad">
             {tipo === "AJUSTE" ? "Stock final" : "Cantidad"}
           </Label>
-          <Input
+          <NumberInput
             id="cantidad"
-            type="number"
-            min="0"
-            step="1"
+            min={0}
             required
             value={cantidad}
-            onChange={(e) => setCantidad(e.target.value)}
+            onChange={setCantidad}
             placeholder={tipo === "AJUSTE" ? "Cuántas hay" : "Cuántas mover"}
           />
         </div>
