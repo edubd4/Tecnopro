@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { MoneyInput } from "@/components/ui/number-input"
 import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { crearGasto } from "@/app/(dashboard)/gastos/actions"
@@ -94,15 +95,12 @@ export function GastoForm({ categorias }: { categorias: CategoriaOption[] }) {
 
           <div className="space-y-2">
             <Label htmlFor="monto">Monto (ARS) *</Label>
-            <Input
+            <MoneyInput
               id="monto"
-              type="number"
-              min="0.01"
-              step="0.01"
+              min={1}
               required
-              value={form.monto || ""}
-              onChange={(e) => update("monto", Number(e.target.value))}
-              placeholder="0"
+              value={form.monto || null}
+              onChange={(v) => update("monto", v ?? 0)}
             />
           </div>
 

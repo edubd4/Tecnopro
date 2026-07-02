@@ -4,8 +4,8 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { MoneyInput, NumberInput } from "@/components/ui/number-input"
 import { Select } from "@/components/ui/select"
 import { agregarRepuestoAOrden } from "@/app/(dashboard)/ordenes/items-actions"
 
@@ -26,8 +26,8 @@ export function AgregarRepuestoForm({ ordenId, repuestos }: Props) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [repuestoId, setRepuestoId] = useState("")
-  const [precio, setPrecio] = useState<string>("")
-  const [cantidad, setCantidad] = useState<string>("1")
+  const [precio, setPrecio] = useState<number | null>(null)
+  const [cantidad, setCantidad] = useState<number | null>(1)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
@@ -36,7 +36,7 @@ export function AgregarRepuestoForm({ ordenId, repuestos }: Props) {
   function handleRepuestoChange(e: React.ChangeEvent<HTMLSelectElement>) {
     setRepuestoId(e.target.value)
     const r = repuestos.find((x) => x.id === e.target.value)
-    if (r) setPrecio(String(r.precio_venta))
+    if (r) setPrecio(r.precio_venta)
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -46,8 +46,11 @@ export function AgregarRepuestoForm({ ordenId, repuestos }: Props) {
       setError("Elegí un repuesto")
       return
     }
-    const cantNum = Number(cantidad)
-    if (seleccionado && cantNum > seleccionado.stock_actual) {
+    if (precio === null || cantidad === null || cantidad <= 0) {
+      setError("Precio y cantidad válidos requeridos")
+      return
+    }
+    if (seleccionado && cantidad > seleccionado.stock_actual) {
       setError(`Stock insuficiente: hay ${seleccionado.stock_actual} unidad(es) disponibles`)
       return
     }
@@ -56,16 +59,16 @@ export function AgregarRepuestoForm({ ordenId, repuestos }: Props) {
       const result = await agregarRepuestoAOrden({
         orden_id: ordenId,
         repuesto_id: repuestoId,
-        precio_unitario: Number(precio),
-        cantidad: cantNum,
+        precio_unitario: precio,
+        cantidad,
       })
       if (!result.ok) {
         setError(result.error)
         return
       }
       setRepuestoId("")
-      setPrecio("")
-      setCantidad("1")
+      setPrecio(null)
+      setCantidad(1)
       setOpen(false)
       router.refresh()
     })
@@ -105,27 +108,23 @@ export function AgregarRepuestoForm({ ordenId, repuestos }: Props) {
         </div>
         <div className="sm:col-span-3 space-y-1">
           <Label htmlFor="precio" className="text-xs">Precio (ARS)</Label>
-          <Input
+          <MoneyInput
             id="precio"
-            type="number"
-            min="0"
-            step="0.01"
+            min={0}
             required
             value={precio}
-            onChange={(e) => setPrecio(e.target.value)}
+            onChange={setPrecio}
           />
         </div>
         <div className="sm:col-span-2 space-y-1">
           <Label htmlFor="cantidad" className="text-xs">Cantidad</Label>
-          <Input
+          <NumberInput
             id="cantidad"
-            type="number"
-            min="1"
-            step="1"
-            max={seleccionado?.stock_actual ?? undefined}
+            min={1}
+            max={seleccionado?.stock_actual}
             required
             value={cantidad}
-            onChange={(e) => setCantidad(e.target.value)}
+            onChange={setCantidad}
           />
         </div>
       </div>
