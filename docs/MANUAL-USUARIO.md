@@ -98,7 +98,7 @@ Ve solo lo operativo. Puede:
    - Agregá servicios y repuestos con precio.
    - El sistema sugiere precio de repuestos con **margen** configurable (por defecto 30%).
    - Cambiá el estado a `ENVIADO`.
-   - **Generar mensaje** → copia un texto listo para pegar en WhatsApp o mail al cliente.
+   - **Generar mensaje** → copia un texto listo para pasar al cliente (por el canal que uses habitualmente: mensajería, mail, imprimir, etc.).
 
 6. **Aprobación del cliente**:
    - Cuando el cliente responde, cambiás el estado del presupuesto a `APROBADO` o `RECHAZADO`.
@@ -181,7 +181,7 @@ Vista **Semana** (`/turnos`) muestra la grilla horaria. **Anterior / Siguiente /
 
 ---
 
-### Flujo 6 · Cliente pregunta por WhatsApp "¿cómo va mi equipo?"
+### Flujo 6 · Cliente pregunta "¿cómo va mi equipo?"
 
 1. Menú → **Órdenes**.
 2. Buscá por número (`OT-0057`) o parte del nombre del cliente.
@@ -270,7 +270,7 @@ Estas cosas son **inmutables** (no se pueden editar ni borrar). Si te equivocás
 
 ### IDs legibles
 
-Cada entidad tiene un ID amigable que se usa en WhatsApp y en el trato con el cliente:
+Cada entidad tiene un ID amigable que se usa en la comunicación con el cliente:
 
 | Prefijo | Qué es |
 |---|---|
