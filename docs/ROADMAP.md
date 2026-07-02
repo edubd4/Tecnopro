@@ -1,6 +1,6 @@
 # TECNOPRO — Roadmap técnico
 
-Estado del proyecto y hoja de ruta. Ver también [ESTADO-PROYECTO.md](./ESTADO-PROYECTO.md) para retomar en una nueva sesión, y [PATRONES.md](./PATRONES.md) para las convenciones establecidas.
+Estado del proyecto y hoja de ruta. Ver también [ESTADO-PROYECTO.md](./ESTADO-PROYECTO.md) para retomar en una nueva sesión, [PATRONES.md](./PATRONES.md) para las convenciones establecidas, y [MANUAL-USUARIO.md](./MANUAL-USUARIO.md) para el uso end-user.
 
 ---
 
@@ -20,7 +20,7 @@ Estado del proyecto y hoja de ruta. Ver también [ESTADO-PROYECTO.md](./ESTADO-P
 
 ---
 
-## ✅ Fase 2 · Módulos del MVP
+## ✅ Fase 2 · Módulos del MVP — COMPLETO
 
 ### ✅ Ola A · Maestros (5 módulos)
 - [x] **03 · Clientes** — CRUD + búsqueda + soft delete + IDs `CLI-XXXX`
@@ -34,51 +34,79 @@ Estado del proyecto y hoja de ruta. Ver también [ESTADO-PROYECTO.md](./ESTADO-P
 - [x] **04 · Turnos + Calendario** — CRUD + vista semanal (grilla 7×14 con posición absoluta) + vista lista + navegador de semanas + detección de overlap con `tstzrange && tstzrange`
 - [x] **05 · Presupuestos** — CRUD + items (servicios + repuestos con margen sugerido `costo × (1 + m/100)`) + estados (BORRADOR/ENVIADO/APROBADO/RECHAZADO/VENCIDO) + auto-timestamps `enviado_at`/`respondido_at` + generador de mensaje template + copy-to-clipboard + editor manual + congelamiento post-respuesta
 
-### ⏳ Ola C · Plata (4 módulos)
-- [ ] **08 · Caja** — ingresos y egresos, saldo en vivo, cierre diario con resumen
-- [ ] **09 · Gastos** — registro de egresos por categoría con comprobante adjunto
-- [ ] **10 · Tesorería básica** — cobros pendientes, pagos por vencer, resumen mensual
-- [ ] **11 · Contabilidad básica** — libro de ingresos y egresos, exportación CSV
+### ✅ Ola C · Plata (4 módulos)
+- [x] **08 · Caja** — `movimientos_caja` append-only con `MOV-XXXX` + vista `saldo_caja` + RPC `cobrar_orden()` transaccional + integración con ficha de orden (sección `CobrosOrdenSection`) + RLS admin-only
+- [x] **09 · Gastos** — `gastos` con `GST-XXXX` + `categorias_gasto` configurable (8 seeds) + RPC `registrar_gasto()` que crea EGRESO en caja en la misma transacción + append-only + filtros por categoría en la lista
+- [x] **10 · Tesorería básica** — Vista SQL `ordenes_con_saldo` (total imputado - cobrado = saldo) + 4 tarjetas KPI (por cobrar, ingresos mes, egresos mes, neto) + tabla ordenada por saldo desc
+- [x] **11 · Contabilidad básica** — Libro de movimientos con filtros preset mes/año/custom + resumen del período + **export CSV** (API route `/api/contabilidad/csv` con BOM UTF-8 para Excel)
 
-### ⏳ Ola D · Visión (3 módulos)
-- [ ] **01 · Panel principal** — KPIs, alertas del día, turnos, caja, órdenes activas
-- [ ] **12 · Analytics** — órdenes por estado/técnico, servicios más vendidos, tendencia mensual
-- [ ] **Alertas del sistema** — pagos por vencer, entregas próximas, stock bajo, nuevas asignaciones
+### ✅ Ola D · Visión (3 módulos)
+- [x] **01 · Panel principal** — Dual view por rol: admin ve 4 KPIs (saldo, por cobrar, órdenes activas, turnos hoy) + banner de alertas condicional + últimas 5 órdenes + últimos 5 movimientos; técnico ve sus órdenes activas + turnos de hoy
+- [x] **12 · Analytics** — 4 charts en SVG/CSS puro sin lib externa: órdenes por estado, órdenes por técnico, ingresos vs egresos 6 meses, top 5 categorías de gasto del mes
+- [x] **Alertas del sistema** — 4 secciones (entregas vencidas, saldos con demora > 30d, stock bajo, presupuestos por vencer en 7 días) + empty state verde si todo en orden
 
 ---
 
 ## ⏳ Fase 3 · IA integrada
 
-Reemplazar `lib/mensaje-presupuesto.ts` con llamadas a Claude Haiku. La firma ya está preparada: la función pura `generarMensajePresupuestoTemplate(datos)` se cambia por `generarMensajePresupuestoIA(datos)` sin tocar UI ni actions.
+Reemplazar templates estáticos por generación con **Claude Haiku** (`claude-haiku-4-5-20251001`). La firma ya está preparada: la función pura `generarMensajePresupuestoTemplate(datos)` se cambia por `generarMensajePresupuestoIA(datos)` sin tocar UI ni actions.
 
-- [ ] Endpoint `/api/ia/generate` con Anthropic SDK
-- [ ] **Caso 1**: Mensaje de presupuesto (reemplaza el template actual)
-- [ ] **Caso 2**: Mensajes de estado ("tu equipo está listo", "demora en repuesto")
-- [ ] **Caso 3**: Consultas internas en NL ("órdenes que vencen esta semana", "cuánto facturé en redes este mes")
-- [ ] Rate limiting + logging de consumo por usuario
+### Setup técnico
+- [ ] Agregar `ANTHROPIC_API_KEY` como env var en Vercel (Production + Preview)
+- [ ] Crear `app/api/ia/generate/route.ts` con auth check propio (admin/técnico según feature)
+- [ ] Agregar `Anthropic` client helper en `lib/anthropic.ts`
+
+### Casos de uso — sub-PRs sugeridos
+- [ ] **PR 3.1 · Mensaje de presupuesto** — Swap directo del template. Bajo riesgo (feature ya existente), valida la integración. Rate limit por presupuesto: 1 regeneración cada 30s.
+- [ ] **PR 3.2 · Avisos automáticos** — "tu equipo está listo", "demora en repuesto". Trigger desde cambio de estado de orden. Guarda en `historial` con tipo `MENSAJE_IA` + costo_tokens.
+- [ ] **PR 3.3 · Consultas internas en NL** — Panel del admin con input "preguntá lo que quieras sobre el negocio". Prompt engineering con contexto de rol + estructura del schema. Retorna texto o tabla según intent.
+
+### Cross-cutting
+- [ ] Rate limiting por usuario (por ejemplo, 50 llamadas/día/user)
+- [ ] Logging de consumo: campo `costo_tokens` en `historial.payload` para cada `MENSAJE_IA`
+- [ ] Panel de admin para ver consumo mensual y por técnico
+- [ ] Prompt library en `lib/prompts/` — versionable
+
+Estimado: 2-3 semanas.
 
 ---
 
 ## ⏳ Fase 4 · Capacitación y prueba real
 
-- [ ] Smoke tests end-to-end
-- [ ] Capacitación con Guillermo y técnicos
-- [ ] Período de prueba con datos reales
+- [ ] Smoke tests end-to-end (checklists por módulo, no automation por ahora)
+- [ ] Capacitación con Guillermo y técnicos (basada en `docs/MANUAL-USUARIO.md`)
+- [ ] Período de prueba con datos reales (mínimo 2 semanas)
 - [ ] Ajustes según feedback
 - [ ] **Entrega final**: transferencia de ownership de Supabase y Vercel a la cuenta de Onlinebytes
 
 ---
 
-## 🔵 Fase 5+ · Backlog
+## 🔵 Fase 5+ · Backlog largo plazo
 
 Para futuras fases comerciales según la propuesta:
-- Proveedores y cadena de compra
+- Proveedores y cadena de compra (nueva tabla + relacionar con compras/repuestos)
 - Tesorería completa (flujo proyectado, conciliación bancaria)
-- Analytics avanzados configurables
-- IA con acciones directas (asignar turnos, mover órdenes, crear clientes)
-- Integración WhatsApp Business API
-- Google Calendar / Calendly
-- AFIP / Monotributo / IVA
+- Analytics avanzados configurables (dashboards personalizables por Guillo)
+- IA con **acciones directas** (asignar turnos, mover órdenes, crear clientes desde NL)
+- Integración WhatsApp Business API (envío automático de mensajes)
+- Google Calendar / Calendly para turnos
+- AFIP / Monotributo / IVA (facturación electrónica)
+- App nativa (React Native / Expo)
+
+---
+
+## Backlog acumulado (post-MVP, no bloqueante)
+
+Cosas que quedaron afuera del MVP pero se pueden agregar en cualquier momento:
+
+1. **CRUD de categorías de gasto en UI** — hoy se manejan vía SQL Editor.
+2. **Convertir presupuesto aprobado a orden** con arrastre de items (pedido explícito de Guillo).
+3. **Vista `/historial`** para el admin.
+4. **Filtro por técnico/prioridad en `/ordenes`**.
+5. **UX de filas clickeables** en Clientes / Catálogo / Stock / Usuarios / Turnos-lista.
+6. **Umbrales de `/alertas` a `configuracion`** (30d saldos, 7d presupuestos hoy hardcoded).
+7. **Filtros de fecha en `/caja`**.
+8. **"Pagos por vencer" en Tesorería** — requiere tabla de vencimientos.
 
 ---
 
@@ -95,6 +123,11 @@ Para futuras fases comerciales según la propuesta:
 | 0007 | `0007_orden_items.sql` | orden_servicios, orden_repuestos + RPCs `imputar_repuesto_a_orden` y `desimputar_repuesto_de_orden` |
 | 0008 | `0008_turnos.sql` | turnos con TRN-XXXX + RPC `turnos_overlap_for_tecnico` |
 | 0009 | `0009_presupuestos.sql` | presupuestos, presupuesto_servicios, presupuesto_repuestos + trigger auto-timestamps |
+| 0010 | `0010_caja.sql` | movimientos_caja append-only con MOV-XXXX + vista saldo_caja + RPC cobrar_orden + RLS admin-only |
+| 0011 | `0011_gastos.sql` | categorias_gasto (configurable, 8 seeds) + gastos append-only con GST-XXXX + RPC registrar_gasto |
+| 0012 | `0012_reporting_views.sql` | vista `ordenes_con_saldo` combinando ordenes + items + cobros |
+
+Sin migraciones para Ola D — todos los módulos son composición de datos existentes.
 
 ---
 
@@ -104,5 +137,6 @@ Para futuras fases comerciales según la propuesta:
 - **Commits**: Conventional Commits sin `Co-Authored-By`
 - **PRs**: uno por módulo o por sub-fase. NO push directo a main (excepto el bootstrap inicial).
 - **Regla de proceso**: `npm run build` + `npm run dev` local antes del push. Preview URL de Vercel verificado antes de mergear.
-- **Migraciones SQL**: numeradas, aplicadas manualmente por Guillermo/Eduardo en el SQL Editor de Supabase antes del merge.
+- **Migraciones SQL**: numeradas, aplicadas manualmente por Guillermo/Eduardo en el SQL Editor de Supabase antes del merge. Post-migración con CREATE TYPE / CREATE VIEW, correr `NOTIFY pgrst, 'reload schema';` si aparece "schema cache" error.
 - **Memoria engram**: cada decisión/gotcha/patrón queda con `mem_save` y `project: tecnopro`. Ver [ESTADO-PROYECTO.md](./ESTADO-PROYECTO.md) para levantar contexto en sesión nueva.
+- **Fechas server → client como string ISO** (`YYYY-MM-DD`), nunca como objeto `Date`. Reconstruir con `T12:00:00` en client para evitar drift de TZ.
