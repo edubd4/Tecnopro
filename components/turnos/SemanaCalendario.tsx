@@ -14,18 +14,12 @@ type TurnoBloque = {
 
 type Props = {
   turnos: TurnoBloque[]
-  weekStart: Date       // lunes 00:00 de la semana a mostrar
+  weekStartISO: string  // "YYYY-MM-DD" del lunes visible (server-calculated, TZ-safe)
   horaInicio?: number   // hora en la que arranca la vista (default 7)
   horaFin?: number      // hora en la que termina (default 21)
 }
 
 const DIAS_NOMBRE = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
-
-function startOfDay(d: Date): Date {
-  const x = new Date(d)
-  x.setHours(0, 0, 0, 0)
-  return x
-}
 
 function sameDay(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear()
@@ -33,11 +27,14 @@ function sameDay(a: Date, b: Date): boolean {
     && a.getDate() === b.getDate()
 }
 
-export function SemanaCalendario({ turnos, weekStart, horaInicio = 7, horaFin = 21 }: Props) {
+export function SemanaCalendario({ turnos, weekStartISO, horaInicio = 7, horaFin = 21 }: Props) {
+  // Reconstruimos las fechas a partir del ISO con T12:00:00 para evitar drift
+  // de TZ al pasar server → client (si usaramos T00:00:00, el client en AR = UTC-3
+  // podria retroceder al dia anterior).
   const dias: Date[] = []
   for (let i = 0; i < 7; i++) {
-    const d = new Date(weekStart)
-    d.setDate(weekStart.getDate() + i)
+    const d = new Date(`${weekStartISO}T12:00:00`)
+    d.setDate(d.getDate() + i)
     dias.push(d)
   }
   const totalHoras = horaFin - horaInicio    // ej 14
@@ -90,10 +87,6 @@ export function SemanaCalendario({ turnos, weekStart, horaInicio = 7, horaFin = 
 
         {/* 7 columnas de días */}
         {dias.map((d, diaIdx) => {
-          const inicioDia = startOfDay(d)
-          const finDia = new Date(inicioDia)
-          finDia.setDate(finDia.getDate() + 1)
-
           const turnosDelDia = turnos.filter((t) => {
             const inicio = new Date(t.fecha_inicio)
             return sameDay(inicio, d)

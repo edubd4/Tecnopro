@@ -5,39 +5,46 @@ import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 type Props = {
-  weekStart: Date       // lunes 00:00 de la semana visible
+  weekStartISO: string       // "YYYY-MM-DD" del lunes visible (calculado en server)
 }
 
-function toISODate(d: Date): string {
+// Aritmetica de fechas con mediodia para evitar drift de TZ.
+// Si sumamos dias con Date creado a T00:00, el paso a client (AR = UTC-3) puede
+// retroceder el dia. Con T12:00 quedamos con margen a ambos lados.
+function addDaysISO(iso: string, days: number): string {
+  const d = new Date(`${iso}T12:00:00`)
+  d.setDate(d.getDate() + days)
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, "0")
   const day = String(d.getDate()).padStart(2, "0")
   return `${y}-${m}-${day}`
 }
 
-export function NavegadorSemana({ weekStart }: Props) {
+function humanRange(iso: string): string {
+  const start = new Date(`${iso}T12:00:00`)
+  const end = new Date(`${iso}T12:00:00`)
+  end.setDate(end.getDate() + 6)
+  return `${start.getDate()}/${start.getMonth() + 1} – ${end.getDate()}/${end.getMonth() + 1}/${end.getFullYear()}`
+}
+
+export function NavegadorSemana({ weekStartISO }: Props) {
   const router = useRouter()
   const params = useSearchParams()
 
   function navigate(offsetDias: number) {
-    const nueva = new Date(weekStart)
-    nueva.setDate(nueva.getDate() + offsetDias)
+    const nuevaISO = addDaysISO(weekStartISO, offsetDias)
     const sp = new URLSearchParams(params.toString())
-    sp.set("semana", toISODate(nueva))
-    router.replace(`/turnos?${sp.toString()}`)
+    sp.set("semana", nuevaISO)
+    // push (no replace) para tener history back/forward + garantia de refetch.
+    router.push(`/turnos?${sp.toString()}`)
   }
 
   function hoy() {
     const sp = new URLSearchParams(params.toString())
     sp.delete("semana")
     const qs = sp.toString()
-    router.replace(qs ? `/turnos?${qs}` : "/turnos")
+    router.push(qs ? `/turnos?${qs}` : "/turnos")
   }
-
-  const finSemana = new Date(weekStart)
-  finSemana.setDate(finSemana.getDate() + 6)
-
-  const rango = `${weekStart.getDate()}/${weekStart.getMonth() + 1} – ${finSemana.getDate()}/${finSemana.getMonth() + 1}/${finSemana.getFullYear()}`
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
@@ -53,7 +60,7 @@ export function NavegadorSemana({ weekStart }: Props) {
         Siguiente
         <ChevronRight className="w-4 h-4" />
       </Button>
-      <p className="font-mono text-xs text-tp-muted ml-2">{rango}</p>
+      <p className="font-mono text-xs text-tp-muted ml-2">{humanRange(weekStartISO)}</p>
     </div>
   )
 }

@@ -18,6 +18,16 @@ function lunesDeSemana(base: Date): Date {
   return d
 }
 
+// Serializamos la fecha a "YYYY-MM-DD" en la TZ del server. Los client
+// components la reconstruyen con T12:00:00 para no cruzar la frontera de dia
+// por drift de TZ (server suele estar en UTC, client en AR = UTC-3).
+function toISODate(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, "0")
+  const day = String(d.getDate()).padStart(2, "0")
+  return `${y}-${m}-${day}`
+}
+
 type TurnoRow = {
   id: string
   id_publico: string
@@ -118,7 +128,7 @@ export default async function TurnosPage({
 
           {vista === "semana" && (
             <div className="ml-auto">
-              <NavegadorSemana weekStart={weekStart} />
+              <NavegadorSemana weekStartISO={toISODate(weekStart)} />
             </div>
           )}
         </div>
@@ -131,7 +141,7 @@ export default async function TurnosPage({
 
         {vista === "semana" ? (
           <SemanaCalendario
-            weekStart={weekStart}
+            weekStartISO={toISODate(weekStart)}
             turnos={rows.map((t) => ({
               id: t.id,
               id_publico: t.id_publico,
