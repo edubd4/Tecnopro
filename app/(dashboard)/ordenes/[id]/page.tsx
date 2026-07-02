@@ -7,6 +7,7 @@ import { OrdenForm } from "@/components/ordenes/OrdenForm"
 import { CambiarEstadoOrden } from "@/components/ordenes/CambiarEstadoOrden"
 import { AsignarTecnicoOrden } from "@/components/ordenes/AsignarTecnicoOrden"
 import { ItemsOrden } from "@/components/ordenes/ItemsOrden"
+import { CobrosOrdenSection } from "@/components/caja/CobrosOrdenSection"
 import { ROL } from "@/lib/constants"
 import { formatFecha, formatFechaHora } from "@/lib/utils"
 import { ESTADO_ORDEN_LABEL, ESTADO_ORDEN_VARIANT, PRIORIDAD_LABEL, PRIORIDAD_VARIANT } from "@/lib/ordenes-ui"
@@ -73,6 +74,30 @@ export default async function OrdenDetallePage({
 
   if (!orden) notFound()
   const o = orden as unknown as OrdenRow
+
+  // Total de la orden para la seccion de cobros (solo admin la ve, pero
+  // calculamos siempre para no duplicar el fetch bajo el condicional del render)
+  const [srvSumRes, repSumRes] = await Promise.all([
+    supabase
+      .from("orden_servicios")
+      .select("precio, cantidad")
+      .eq("orden_id", params.id),
+    supabase
+      .from("orden_repuestos")
+      .select("precio_unitario, cantidad")
+      .eq("orden_id", params.id),
+  ])
+  const totalOrden =
+    (srvSumRes.data ?? []).reduce(
+      (sum, r: { precio: number | string; cantidad: number }) =>
+        sum + Number(r.precio) * r.cantidad,
+      0,
+    ) +
+    (repSumRes.data ?? []).reduce(
+      (sum, r: { precio_unitario: number | string; cantidad: number }) =>
+        sum + Number(r.precio_unitario) * r.cantidad,
+      0,
+    )
 
   // Clientes y tecnicos para el form de edicion (solo si admin)
   const [clientesRes, tecnicosRes] = await Promise.all([
@@ -194,6 +219,16 @@ export default async function OrdenDetallePage({
             && o.estado !== "CANCELADA"
           }
         />
+
+        {esAdmin && (
+          <CobrosOrdenSection
+            ordenId={o.id}
+            ordenIdPublico={o.id_publico}
+            ordenEstado={o.estado}
+            puedeCobrar={esAdmin}
+            totalOrden={totalOrden}
+          />
+        )}
 
         {o.notas_internas && (
           <section className="rounded-xl border border-tp-line-soft bg-tp-card p-5">
