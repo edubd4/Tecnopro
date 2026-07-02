@@ -18,6 +18,7 @@ import {
   BarChart3,
   UserCog,
   Settings,
+  AlertTriangle,
   type LucideIcon,
 } from "lucide-react"
 import type { IconKey } from "@/lib/nav"
@@ -37,4 +38,5 @@ export const ICONS: Record<IconKey, LucideIcon> = {
   BarChart3,
   UserCog,
   Settings,
+  AlertTriangle,
 }

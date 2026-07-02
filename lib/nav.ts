@@ -19,6 +19,7 @@ export type IconKey =
   | "BarChart3"
   | "UserCog"
   | "Settings"
+  | "AlertTriangle"
 
 export type NavItem = {
   label: string
@@ -64,7 +65,8 @@ export const NAV: NavGroup[] = [
   {
     label: "Análisis",
     items: [
-      { label: "Analytics", href: "/analytics", iconKey: "BarChart3", roles: [ROL.ADMIN] },
+      { label: "Analytics", href: "/analytics", iconKey: "BarChart3",    roles: [ROL.ADMIN] },
+      { label: "Alertas",   href: "/alertas",   iconKey: "AlertTriangle", roles: [ROL.ADMIN] },
     ],
   },
   {
