@@ -20,6 +20,7 @@ export type IconKey =
   | "UserCog"
   | "Settings"
   | "AlertTriangle"
+  | "ScrollText"
 
 export type NavItem = {
   label: string
@@ -70,8 +71,9 @@ export const NAV: NavGroup[] = [
   {
     label: "Sistema",
     items: [
-      { label: "Usuarios",       href: "/usuarios",     iconKey: "UserCog",  roles: [ROL.ADMIN] },
-      { label: "Configuración",  href: "/configuracion", iconKey: "Settings", roles: [ROL.ADMIN] },
+      { label: "Usuarios",       href: "/usuarios",     iconKey: "UserCog",    roles: [ROL.ADMIN] },
+      { label: "Historial",      href: "/historial",    iconKey: "ScrollText", roles: [ROL.ADMIN] },
+      { label: "Configuración",  href: "/configuracion", iconKey: "Settings",  roles: [ROL.ADMIN] },
     ],
   },
 ]

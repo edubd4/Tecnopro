@@ -245,11 +245,11 @@ export default async function OrdenDetallePage({
         )}
 
         {o.notas_internas && (
-          <section className="rounded-xl border border-tp-line-soft bg-tp-card p-5">
-            <p className="font-mono text-[10.5px] text-tp-cyan tracking-[0.14em] uppercase mb-2">
-              Notas internas
+          <section className="rounded-xl border-l-4 border border-tp-amber/50 border-l-tp-amber bg-tp-amber/5 p-5">
+            <p className="font-mono text-[10.5px] text-tp-amber tracking-[0.14em] uppercase mb-2 font-semibold">
+              📝 Notas internas · No visibles al cliente
             </p>
-            <p className="text-sm text-tp-secondary whitespace-pre-wrap">{o.notas_internas}</p>
+            <p className="text-sm text-tp-text whitespace-pre-wrap">{o.notas_internas}</p>
           </section>
         )}
 
