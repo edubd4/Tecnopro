@@ -142,7 +142,7 @@ async function PanelAdmin({ nombre }: { nombre: string }) {
         {/* KPIs */}
         <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <KPI icon={<Wallet className="w-4 h-4" />} label="Saldo caja" value={formatPesos(saldo)} href="/caja" tone="cyan" />
-          <KPI icon={<AlertCircle className="w-4 h-4" />} label="Por cobrar" value={formatPesos(totalPorCobrar)} href="/tesoreria" tone="amber" />
+          <KPI icon={<AlertCircle className="w-4 h-4" />} label="Por cobrar" value={formatPesos(totalPorCobrar)} href="/contabilidad?tab=por-cobrar" tone="amber" />
           <KPI icon={<ClipboardList className="w-4 h-4" />} label="Órdenes activas" value={String(ordenesActivas)} href="/ordenes" tone="violet" />
           <KPI icon={<CalendarDays className="w-4 h-4" />} label="Turnos hoy" value={String(turnosHoy)} href="/turnos" tone="green" />
         </section>

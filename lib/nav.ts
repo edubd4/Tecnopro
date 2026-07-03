@@ -57,8 +57,6 @@ export const NAV: NavGroup[] = [
     label: "Plata",
     items: [
       { label: "Caja",         href: "/caja",         iconKey: "Wallet",     roles: [ROL.ADMIN] },
-      { label: "Gastos",       href: "/gastos",       iconKey: "Receipt",    roles: [ROL.ADMIN] },
-      { label: "Tesorería",    href: "/tesoreria",    iconKey: "Landmark",   roles: [ROL.ADMIN] },
       { label: "Contabilidad", href: "/contabilidad", iconKey: "Calculator", roles: [ROL.ADMIN] },
     ],
   },

@@ -10,7 +10,10 @@ import { TIPO_EVENTO } from "@/lib/constants"
 type ActionResult = { ok: false; error: string } | { ok: true }
 
 // ─── Repuestos ────────────────────────────────────────────────────────────
-export async function createRepuesto(input: RepuestoInput): Promise<ActionResult> {
+export async function createRepuesto(
+  input: RepuestoInput,
+  stockInicial: number = 0,
+): Promise<ActionResult> {
   const parsed = repuestoSchema.safeParse(input)
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos" }
@@ -20,18 +23,63 @@ export async function createRepuesto(input: RepuestoInput): Promise<ActionResult
   if (!guard.ok) return { ok: false, error: guard.error }
   const { supabase, user } = guard
 
+  // Normalizamos strings vacíos a null (categoria, codigo, ubicacion)
+  const cleanCategoria = parsed.data.categoria?.trim() || null
+  const cleanUbicacion = parsed.data.ubicacion?.trim() || null
+  const cleanCodigoInput = parsed.data.codigo?.trim() || null
+
   const { data, error } = await supabase
     .from("repuestos")
     .insert({
       ...parsed.data,
+      categoria: cleanCategoria,
+      ubicacion: cleanUbicacion,
+      codigo: cleanCodigoInput,
       created_by: user.id,
       updated_by: user.id,
     })
-    .select("id, id_publico, nombre")
+    .select("id, id_publico, nombre, codigo")
     .single()
 
   if (error || !data) {
     return { ok: false, error: error?.message ?? "No se pudo crear el repuesto" }
+  }
+
+  // Wave 1.7 — Autogenerar código interno con el id_publico si el user lo dejó vacío
+  if (!data.codigo) {
+    await supabase
+      .from("repuestos")
+      .update({ codigo: data.id_publico })
+      .eq("id", data.id)
+  }
+
+  // Wave 1.3 — Stock inicial (opcional). Genera un movimiento ENTRADA con motivo
+  // explícito. NO toca caja (los movimientos de stock nunca tocan caja).
+  if (stockInicial > 0) {
+    const { error: movErr } = await supabase
+      .from("repuestos_movimientos")
+      .insert({
+        repuesto_id: data.id,
+        tipo: "ENTRADA",
+        cantidad: stockInicial,
+        motivo: "Stock inicial de carga (no afecta caja)",
+        created_by: user.id,
+      })
+    if (movErr) {
+      // El repuesto ya se creó; devolvemos error pero no revertimos
+      return {
+        ok: false,
+        error: `Repuesto creado, pero falló el stock inicial: ${movErr.message}`,
+      }
+    }
+    await logHistorial(supabase, {
+      tipo: TIPO_EVENTO.STOCK_MOVIMIENTO,
+      descripcion: `Stock inicial de ${data.id_publico}: ${stockInicial} unidad(es). No afecta caja.`,
+      entidadTipo: "repuesto",
+      entidadId: data.id_publico,
+      payload: { tipo: "ENTRADA", cantidad: stockInicial, motivo: "Stock inicial de carga" },
+      userId: user.id,
+    })
   }
 
   await logHistorial(supabase, {
@@ -56,9 +104,19 @@ export async function updateRepuesto(id: string, input: RepuestoInput): Promise<
   if (!guard.ok) return { ok: false, error: guard.error }
   const { supabase, user } = guard
 
+  // Normalizamos strings vacíos a null para no ensuciar los SELECT DISTINCT
+  // que alimentan el ComboBox de categorías/ubicaciones.
+  const cleanData = {
+    ...parsed.data,
+    categoria: parsed.data.categoria?.trim() || null,
+    ubicacion: parsed.data.ubicacion?.trim() || null,
+    codigo: parsed.data.codigo?.trim() || null,
+    updated_by: user.id,
+  }
+
   const { data, error } = await supabase
     .from("repuestos")
-    .update({ ...parsed.data, updated_by: user.id })
+    .update(cleanData)
     .eq("id", id)
     .select("id_publico")
     .single()

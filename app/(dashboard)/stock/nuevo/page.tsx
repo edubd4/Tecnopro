@@ -20,6 +20,36 @@ export default async function NuevoRepuestoPage() {
     redirect("/stock")
   }
 
+  // Sugerencias para el ComboBox: categorías y ubicaciones ya usadas.
+  const [categoriasRes, ubicacionesRes] = await Promise.all([
+    supabase
+      .from("repuestos")
+      .select("categoria")
+      .eq("activo", true)
+      .not("categoria", "is", null),
+    supabase
+      .from("repuestos")
+      .select("ubicacion")
+      .eq("activo", true)
+      .not("ubicacion", "is", null),
+  ])
+
+  const categoriasExistentes = Array.from(
+    new Set(
+      ((categoriasRes.data ?? []) as { categoria: string | null }[])
+        .map((r) => r.categoria?.trim())
+        .filter((c): c is string => !!c),
+    ),
+  ).sort((a, b) => a.localeCompare(b, "es"))
+
+  const ubicacionesExistentes = Array.from(
+    new Set(
+      ((ubicacionesRes.data ?? []) as { ubicacion: string | null }[])
+        .map((r) => r.ubicacion?.trim())
+        .filter((u): u is string => !!u),
+    ),
+  ).sort((a, b) => a.localeCompare(b, "es"))
+
   return (
     <div className="tp-circuit min-h-[calc(100vh-4rem)] px-6 md:px-10 py-8">
       <div className="max-w-3xl mx-auto space-y-6">
@@ -38,11 +68,15 @@ export default async function NuevoRepuestoPage() {
             Agregar repuesto
           </h1>
           <p className="text-tp-secondary">
-            El ID REP-XXXX se asigna al guardar. Después cargás el stock inicial desde la ficha.
+            El ID REP-XXXX se asigna al guardar. Si dejás el código interno vacío, se completa solo.
           </p>
         </div>
 
-        <RepuestoForm mode="create" />
+        <RepuestoForm
+          mode="create"
+          categoriasExistentes={categoriasExistentes}
+          ubicacionesExistentes={ubicacionesExistentes}
+        />
       </div>
     </div>
   )

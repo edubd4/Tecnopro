@@ -1,11 +1,24 @@
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
+import { createServerClient } from "@/lib/supabase/server"
 import { MovimientoForm } from "@/components/caja/MovimientoForm"
 
-export default function NuevoMovimientoPage() {
+export default async function NuevoMovimientoPage() {
+  const supabase = await createServerClient()
+
+  // Categorías de gasto activas (para el flow "Gasto categorizado" dentro del form)
+  const { data: catData } = await supabase
+    .from("categorias_gasto")
+    .select("id, nombre")
+    .eq("activo", true)
+    .order("orden", { ascending: true })
+    .order("nombre", { ascending: true })
+
+  const categoriasGasto = (catData ?? []) as { id: number; nombre: string }[]
+
   return (
     <div className="tp-circuit min-h-[calc(100vh-4rem)] px-6 md:px-10 py-8">
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className="max-w-3xl mx-auto space-y-6">
         <div>
           <Link
             href="/caja"
@@ -21,11 +34,12 @@ export default function NuevoMovimientoPage() {
             Registrar en caja
           </h1>
           <p className="text-tp-secondary">
-            Los cobros por orden se registran automáticamente desde la ficha de cada orden. Acá van ajustes, aperturas, cierres y gastos ad-hoc.
+            Los cobros de órdenes se registran automáticamente desde la ficha de cada orden.
+            Acá van gastos, aperturas, cierres y ajustes.
           </p>
         </div>
 
-        <MovimientoForm />
+        <MovimientoForm categoriasGasto={categoriasGasto} />
       </div>
     </div>
   )
