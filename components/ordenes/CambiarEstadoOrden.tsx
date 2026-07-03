@@ -4,6 +4,8 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
+import { useToast } from "@/components/ui/toast"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 import { cambiarEstadoOrden } from "@/app/(dashboard)/ordenes/actions"
 
 const ESTADOS = [
@@ -30,23 +32,33 @@ type Props = { ordenId: string; estado: string }
 
 export function CambiarEstadoOrden({ ordenId, estado }: Props) {
   const router = useRouter()
+  const toast = useToast()
+  const confirm = useConfirm()
   const [nuevo, setNuevo] = useState(estado)
-  const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
   async function handleClick() {
     if (nuevo === estado) return
-    if (nuevo === "CANCELADA" && !window.confirm("¿Cancelar esta orden?")) return
 
-    setError(null)
+    if (nuevo === "CANCELADA") {
+      const ok = await confirm({
+        title: "¿Cancelar esta orden?",
+        description: "La orden queda con estado CANCELADA. Podés revertirla cambiando el estado.",
+        confirmLabel: "Cancelar orden",
+        tone: "danger",
+      })
+      if (!ok) return
+    }
+
     startTransition(async () => {
       const result = await cambiarEstadoOrden(ordenId, {
         estado: nuevo as typeof ESTADOS[number],
       })
       if (!result.ok) {
-        setError(result.error)
+        toast.error(result.error)
         return
       }
+      toast.success(`Estado actualizado: ${ESTADO_LABEL[nuevo] ?? nuevo}`)
       router.refresh()
     })
   }
@@ -79,11 +91,6 @@ export function CambiarEstadoOrden({ ordenId, estado }: Props) {
           {isPending ? "Guardando…" : "Aplicar"}
         </Button>
       </div>
-      {error && (
-        <p role="alert" className="text-sm text-tp-red">
-          {error}
-        </p>
-      )}
     </div>
   )
 }

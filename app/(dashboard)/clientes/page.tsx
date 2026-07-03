@@ -4,6 +4,7 @@ import { createServerClient } from "@/lib/supabase/server"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableEmpty } from "@/components/ui/table"
+import { LinkRow } from "@/components/ui/link-row"
 import { ClientesSearchInput } from "@/components/clientes/ClientesSearchInput"
 import { ROL } from "@/lib/constants"
 
@@ -126,13 +127,9 @@ export default async function ClientesPage({
                 </TableEmpty>
               ) : (
                 rows.map((c) => (
-                  <TableRow key={c.id} className="cursor-pointer">
-                    <TableCell className="font-mono text-tp-cyan">
-                      <Link href={`/clientes/${c.id}`}>{c.id_publico}</Link>
-                    </TableCell>
-                    <TableCell className="text-tp-text font-medium">
-                      <Link href={`/clientes/${c.id}`}>{nombreVisible(c)}</Link>
-                    </TableCell>
+                  <LinkRow key={c.id} href={`/clientes/${c.id}`}>
+                    <TableCell className="font-mono text-tp-cyan">{c.id_publico}</TableCell>
+                    <TableCell className="text-tp-text font-medium">{nombreVisible(c)}</TableCell>
                     <TableCell>
                       <Badge variant={c.tipo === "EMPRESA" ? "violet" : "cyan"}>
                         {c.tipo === "EMPRESA" ? "Empresa" : "Particular"}
@@ -145,7 +142,7 @@ export default async function ClientesPage({
                         {c.estado}
                       </Badge>
                     </TableCell>
-                  </TableRow>
+                  </LinkRow>
                 ))
               )}
             </TableBody>

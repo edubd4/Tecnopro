@@ -4,6 +4,7 @@ import { createServerClient } from "@/lib/supabase/server"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableEmpty } from "@/components/ui/table"
+import { LinkRow } from "@/components/ui/link-row"
 import { SemanaCalendario } from "@/components/turnos/SemanaCalendario"
 import { NavegadorSemana } from "@/components/turnos/NavegadorSemana"
 import { formatFechaHora } from "@/lib/utils"
@@ -171,13 +172,9 @@ export default async function TurnosPage({
                 </TableEmpty>
               ) : (
                 rows.map((t) => (
-                  <TableRow key={t.id}>
-                    <TableCell className="font-mono text-tp-cyan">
-                      <Link href={`/turnos/${t.id}`}>{t.id_publico}</Link>
-                    </TableCell>
-                    <TableCell className="text-tp-text font-medium">
-                      <Link href={`/turnos/${t.id}`}>{t.titulo}</Link>
-                    </TableCell>
+                  <LinkRow key={t.id} href={`/turnos/${t.id}`}>
+                    <TableCell className="font-mono text-tp-cyan">{t.id_publico}</TableCell>
+                    <TableCell className="text-tp-text font-medium">{t.titulo}</TableCell>
                     <TableCell className="font-mono text-xs text-tp-muted">
                       {formatFechaHora(t.fecha_inicio)}
                     </TableCell>
@@ -192,7 +189,7 @@ export default async function TurnosPage({
                     <TableCell className="text-tp-muted text-sm">
                       {nombreCliente(t.cliente) ?? "—"}
                     </TableCell>
-                  </TableRow>
+                  </LinkRow>
                 ))
               )}
             </TableBody>

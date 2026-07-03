@@ -4,6 +4,7 @@ import { createServerClient } from "@/lib/supabase/server"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableEmpty } from "@/components/ui/table"
+import { LinkRow } from "@/components/ui/link-row"
 import { SearchInput } from "@/components/ui/search-input"
 import { ROL } from "@/lib/constants"
 import { formatPesos } from "@/lib/utils"
@@ -141,12 +142,10 @@ export default async function StockPage({
                 rows.map((r) => {
                   const bajo = r.activo && r.stock_minimo > 0 && r.stock_actual <= r.stock_minimo
                   return (
-                    <TableRow key={r.id}>
-                      <TableCell className="font-mono text-tp-cyan">
-                        <Link href={`/stock/${r.id}`}>{r.id_publico}</Link>
-                      </TableCell>
+                    <LinkRow key={r.id} href={`/stock/${r.id}`}>
+                      <TableCell className="font-mono text-tp-cyan">{r.id_publico}</TableCell>
                       <TableCell className="text-tp-text font-medium">
-                        <Link href={`/stock/${r.id}`}>{r.nombre}</Link>
+                        {r.nombre}
                         {r.categoria && (
                           <span className="ml-2 text-xs text-tp-muted">· {r.categoria}</span>
                         )}
@@ -172,7 +171,7 @@ export default async function StockPage({
                           {r.activo ? "ACTIVO" : "INACTIVO"}
                         </Badge>
                       </TableCell>
-                    </TableRow>
+                    </LinkRow>
                   )
                 })
               )}

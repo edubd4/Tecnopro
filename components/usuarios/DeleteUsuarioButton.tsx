@@ -1,9 +1,11 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useToast } from "@/components/ui/toast"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 import { deleteUsuario } from "@/app/(dashboard)/usuarios/actions"
 
 type Props = {
@@ -15,27 +17,29 @@ type Props = {
 
 export function DeleteUsuarioButton({ usuarioId, usuarioEmail, disabled, disabledReason }: Props) {
   const router = useRouter()
-  const [error, setError] = useState<string | null>(null)
+  const toast = useToast()
+  const confirm = useConfirm()
   const [isPending, startTransition] = useTransition()
 
   async function handleClick() {
     if (disabled) return
 
-    const confirmMsg =
-      `¿Eliminar al usuario ${usuarioEmail}?\n\n` +
-      `Se borra su cuenta de acceso al sistema (Auth + profile).\n` +
-      `El historial de acciones que hizo se preserva para auditoría.\n\n` +
-      `Esta acción NO se puede deshacer.`
+    const ok = await confirm({
+      title: `¿Eliminar al usuario ${usuarioEmail}?`,
+      description:
+        "Se borra su cuenta de acceso al sistema (Auth + profile). El historial de acciones que hizo se preserva para auditoría.\n\nEsta acción NO se puede deshacer.",
+      confirmLabel: "Eliminar usuario",
+      tone: "danger",
+    })
+    if (!ok) return
 
-    if (!window.confirm(confirmMsg)) return
-
-    setError(null)
     startTransition(async () => {
       const result = await deleteUsuario(usuarioId)
       if (!result.ok) {
-        setError(result.error)
+        toast.error(result.error)
         return
       }
+      toast.success(`Usuario ${usuarioEmail} eliminado`)
       router.push("/usuarios")
       router.refresh()
     })
@@ -55,11 +59,6 @@ export function DeleteUsuarioButton({ usuarioId, usuarioEmail, disabled, disable
       </Button>
       {disabled && disabledReason && (
         <p className="text-[11px] text-tp-muted">{disabledReason}</p>
-      )}
-      {error && (
-        <p role="alert" className="text-[12px] text-tp-red">
-          {error}
-        </p>
       )}
     </div>
   )

@@ -4,6 +4,8 @@ import { useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { TableCell, TableRow } from "@/components/ui/table"
+import { useToast } from "@/components/ui/toast"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 import { cn } from "@/lib/utils"
 import { cambiarEstadoOrden } from "@/app/(dashboard)/ordenes/actions"
 import { formatFecha } from "@/lib/utils"
@@ -47,27 +49,36 @@ function nombreCliente(c: Cliente): string {
 
 export function OrdenListRow(props: Props) {
   const router = useRouter()
+  const toast = useToast()
+  const confirm = useConfirm()
   const [isPending, startTransition] = useTransition()
 
   function goToOrden() {
     router.push(`/ordenes/${props.id}`)
   }
 
-  function handleEstadoChange(e: React.ChangeEvent<HTMLSelectElement>) {
+  async function handleEstadoChange(e: React.ChangeEvent<HTMLSelectElement>) {
     e.stopPropagation()
     const nuevo = e.target.value as typeof ESTADOS[number]
     if (nuevo === props.estado) return
 
     if (nuevo === "CANCELADA") {
-      if (!window.confirm(`¿Cancelar la orden ${props.id_publico}?`)) return
+      const ok = await confirm({
+        title: `¿Cancelar la orden ${props.id_publico}?`,
+        description: "La orden queda con estado CANCELADA. Podés revertirla cambiando el estado.",
+        confirmLabel: "Cancelar orden",
+        tone: "danger",
+      })
+      if (!ok) return
     }
 
     startTransition(async () => {
       const result = await cambiarEstadoOrden(props.id, { estado: nuevo })
       if (!result.ok) {
-        alert(result.error)
+        toast.error(result.error)
         return
       }
+      toast.success(`${props.id_publico}: ${ESTADO_ORDEN_LABEL[nuevo] ?? nuevo}`)
       router.refresh()
     })
   }

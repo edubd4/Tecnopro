@@ -10,14 +10,37 @@ export type ConfiguracionUpdate = z.infer<typeof configuracionUpdateSchema>
 
 // Claves conocidas del sistema (matchean con los seeds de 0001_init.sql).
 export const CONFIG_KEYS = {
-  NEGOCIO_NOMBRE:           "negocio_nombre",
-  NEGOCIO_TELEFONO:         "negocio_telefono",
-  NEGOCIO_DIRECCION:        "negocio_direccion",
-  MONEDA_DEFAULT:           "moneda_default",
-  MARGEN_DEFAULT_PCT:       "margen_default_pct",
-  PRESUPUESTO_VALIDEZ_DIAS: "presupuesto_validez_dias",
-  STOCK_ALERTA_DIAS:        "stock_alerta_dias",
+  NEGOCIO_NOMBRE:                  "negocio_nombre",
+  NEGOCIO_TELEFONO:                "negocio_telefono",
+  NEGOCIO_DIRECCION:               "negocio_direccion",
+  MONEDA_DEFAULT:                  "moneda_default",
+  MARGEN_DEFAULT_PCT:              "margen_default_pct",
+  PRESUPUESTO_VALIDEZ_DIAS:        "presupuesto_validez_dias",
+  STOCK_ALERTA_DIAS:               "stock_alerta_dias",
+  // Wave 2.4 — umbrales de /alertas configurables
+  ALERTA_SALDO_VENCIDO_DIAS:       "alerta_saldo_vencido_dias",
+  ALERTA_PRESUPUESTO_POR_VENCER:   "alerta_presupuesto_por_vencer_dias",
 } as const
+
+// Defaults hardcoded para claves nuevas de config.
+// Si la fila no existe en la tabla configuracion (por ej. no se corrió el UPSERT),
+// se usa este valor. Consumido por /alertas y por el form de /configuracion.
+export const CONFIG_DEFAULTS: Record<string, string> = {
+  [CONFIG_KEYS.ALERTA_SALDO_VENCIDO_DIAS]:     "30",
+  [CONFIG_KEYS.ALERTA_PRESUPUESTO_POR_VENCER]: "7",
+}
+
+// Helper: lee un número de la config con fallback al default.
+export function configNumber(
+  values: Record<string, string>,
+  clave: string,
+  fallback: number,
+): number {
+  const raw = values[clave] ?? CONFIG_DEFAULTS[clave]
+  if (raw === undefined || raw === null || raw === "") return fallback
+  const n = Number(raw)
+  return Number.isFinite(n) ? n : fallback
+}
 
 // Descripcion humana + tipo esperado, para renderizar el form.
 export type ConfigFieldSpec = {
@@ -72,8 +95,22 @@ export const CONFIG_FIELDS: ConfigFieldSpec[] = [
   },
   {
     clave: CONFIG_KEYS.STOCK_ALERTA_DIAS,
-    label: "Antelación de alertas (días)",
-    descripcion: "Días de anticipación para avisar pagos y entregas próximas.",
+    label: "Antelación general (días)",
+    descripcion: "Antelación por defecto para avisos internos. No se usa en módulos específicos hoy.",
+    tipo: "number",
+    placeholder: "7",
+  },
+  {
+    clave: CONFIG_KEYS.ALERTA_SALDO_VENCIDO_DIAS,
+    label: "Alerta de saldos con demora (días)",
+    descripcion: "Si una orden lleva más de estos días recibida y aún tiene saldo pendiente, aparece en Alertas.",
+    tipo: "number",
+    placeholder: "30",
+  },
+  {
+    clave: CONFIG_KEYS.ALERTA_PRESUPUESTO_POR_VENCER,
+    label: "Alerta de presupuestos por vencer (días)",
+    descripcion: "Presupuestos enviados cuya validez expira dentro de estos días aparecen en Alertas.",
     tipo: "number",
     placeholder: "7",
   },
