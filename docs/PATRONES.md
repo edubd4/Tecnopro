@@ -598,15 +598,201 @@ Ver `tecnopro/gotcha-supabase-column-comparison` en engram.
 
 ---
 
+## Patrón · Sistema de toasts custom (Context + Portal)
+
+Introducido en Wave 2 (`components/ui/toast.tsx`). Sin dependencias externas — Context + `createPortal`.
+
+```tsx
+const toast = useToast()
+toast.success("Cliente creado")
+toast.error("No se pudo guardar")
+toast.info("El presupuesto vence en 3 días")
+```
+
+**Setup en el layout**:
+```tsx
+<ToastProvider>
+  <ConfirmProvider>
+    {children}
+  </ConfirmProvider>
+</ToastProvider>
+```
+
+**Reglas**:
+- Éxito: 4 segundos.
+- Error: 6 segundos (más tiempo para leer).
+- Portal fixed bottom-right con `z-[100]`.
+- Fallback silencioso a `console.log` si `useToast()` se llama fuera del provider — no rompe el árbol.
+- Después de cada `startTransition` exitoso: `toast.success("...")` contextual.
+- Errores: `toast.error(result.error)` en el catch del action.
+
+---
+
+## Patrón · ConfirmDialog con Radix + useConfirm
+
+Introducido en Wave 2 (`components/ui/confirm-dialog.tsx`). Reemplaza `window.confirm()`.
+
+```tsx
+const confirm = useConfirm()
+
+async function handleDelete() {
+  const ok = await confirm({
+    title: "¿Cancelar orden OT-0042?",
+    description: "La orden queda con estado CANCELADA. Podés revertirla cambiando el estado.",
+    confirmLabel: "Cancelar orden",
+    tone: "danger",  // danger | warning | default
+  })
+  if (!ok) return
+  // ... proceder ...
+}
+```
+
+**Reglas**:
+- Retorna `Promise<boolean>` — API mucho más ergonómica que callbacks.
+- `tone: "danger"` para acciones destructivas (botón rojo).
+- `tone: "warning"` para acciones importantes reversibles.
+- Radix AlertDialog garantiza accesibilidad + Escape + focus trap.
+- Fallback a `window.confirm()` nativo si no hay provider (nunca debería pasar en producción).
+
+---
+
+## Patrón · IA con fallback silencioso al template
+
+Consolidado en Fase 3 (los 3 casos de IA). Aplicado en `mensaje-presupuesto.ts`, `aviso-orden.ts`.
+
+```ts
+let mensaje: string
+let source: "ia" | "template" = "template"
+
+if (hayIADisponible()) {
+  try {
+    const ia = await generarMensajePresupuestoIA(datos)
+    mensaje = ia.mensaje
+    source = "ia"
+  } catch (err) {
+    console.error("[action] IA falló, fallback a template:", err)
+    mensaje = generarMensajePresupuestoTemplate(datos)
+  }
+} else {
+  mensaje = generarMensajePresupuestoTemplate(datos)
+}
+```
+
+**Reglas duras**:
+- Cada llamada a IA va con try/catch.
+- Fallback estático que produce output equivalente (no idéntico, pero funcional).
+- `console.error` para debug (Vercel logs) pero **nunca romper el flow del usuario**.
+- Payload en `historial` con `source: 'ia' | 'template'` + tokens + model para tracking de consumo.
+- `hayIADisponible()` chequea la env var sin crear cliente — evita exception al arrancar.
+
+---
+
+## Patrón · Multi-turn con Anthropic SDK
+
+Introducido en Fase 3.3 (`lib/anthropic.ts` — función `llamarAnthropicMulti`). Para conversaciones donde el modelo necesita recordar mensajes previos.
+
+```ts
+const historial = await getMensajesDeConversacion(convId)
+
+const response = await llamarAnthropicMulti({
+  systemPrompt: `${SYSTEM_PROMPT_BASE}\n\n${snapshotNegocio}`,
+  messages: historial.map((m) => ({
+    role: m.rol as "user" | "assistant",
+    content: m.contenido,
+  })),
+  maxTokens: 800,
+  temperature: 0.4,
+})
+```
+
+**Reglas**:
+- El system prompt siempre incluye contexto fresco de negocio (regenerado en cada request).
+- El historial se pasa como array `messages` para que el modelo mantenga contexto.
+- Limitar el historial (ej. hasta 40 mensajes) para no crecer indefinidamente.
+- `llamarAnthropic()` para casos one-shot (delega internamente a `llamarAnthropicMulti`).
+
+---
+
+## Patrón · Snapshot de negocio para system prompt
+
+Introducido en Fase 3.3 (`lib/chat-context.ts`). Alternativa a tool use.
+
+**Cuándo usarlo**: cuando el modelo necesita responder preguntas sobre el estado actual del negocio pero no necesita ejecutar queries dinámicas.
+
+**Cómo funciona**:
+1. Cada request al chat construye un "snapshot" del negocio con múltiples queries en paralelo (KPIs, alertas, top órdenes con saldo, etc.).
+2. El snapshot se inyecta como texto plano al final del system prompt.
+3. El modelo lee el snapshot y responde en base a esos datos.
+4. Para consultas específicas ("¿cuánto le facturé al cliente X?"), sugiere qué módulo tiene el dato.
+
+**Ventajas vs tool use**:
+- Más simple (una sola llamada a la IA).
+- Latencia predecible.
+- No requiere protocolo de tool use.
+
+**Desventajas**:
+- El snapshot puede quedar desactualizado en tiempo real dentro de una misma conversación (rare edge case).
+- Limitado a las métricas que el snapshot expone.
+
+---
+
+## Patrón · Command Palette con hotkey global
+
+Introducido en Wave 3 (`components/nav/CommandPalette.tsx`). Búsqueda global desde cualquier pantalla con `Cmd+K` / `Ctrl+K`.
+
+```tsx
+// Hotkey handler global
+React.useEffect(() => {
+  function handler(e: KeyboardEvent) {
+    if ((e.key === "k" || e.key === "K") && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault()
+      setOpen((v) => !v)
+    }
+  }
+  window.addEventListener("keydown", handler)
+  return () => window.removeEventListener("keydown", handler)
+}, [])
+```
+
+**Reglas**:
+- Montado en el layout del dashboard, siempre disponible.
+- Radix Dialog para overlay + focus management.
+- Debounce del search (200ms) para no golpear la API con cada tecla.
+- Navegación con teclado (↑↓ + Enter) — obligatorio para UX de teclado.
+- `mouseEnter` en los items también actualiza el índice seleccionado.
+- Endpoint API server-side (`/api/search`) para evitar exponer queries directas al cliente.
+
+---
+
+## Patrón · LinkRow para filas clickeables reutilizables
+
+Introducido en Wave 2 (`components/ui/link-row.tsx`). Reemplaza el pattern manual "cursor-pointer + onClick + router.push" en 5+ listas.
+
+```tsx
+<LinkRow href={`/clientes/${c.id}`}>
+  <TableCell>...</TableCell>
+  <TableCell>...</TableCell>
+</LinkRow>
+```
+
+**Reglas**:
+- `<LinkRow>` envuelve `<TableRow>`, hace `router.push` al click.
+- Controles interactivos dentro (dropdowns, buttons) deben usar `stopPropagation` para no gatillar navegación.
+- Hover cambia sutilmente el background (`hover:bg-tp-surface-mid/30`).
+- Cuando hay lógica más compleja en la fila (ej. select de estado inline), NO usar `LinkRow`; usar client component custom (patrón `OrdenListRow`).
+
+---
+
 ## Reglas de proceso
 
 1. **`npm run build`** local antes del push (pesca errores de TS/ESLint que Vercel también pescaría).
 2. **`npm run dev`** local para probar interactividad (el build NO ejecuta el código).
 3. **Preview de Vercel verde antes de mergear** — no mergear "porque el build salió verde"; abrir el preview URL y clickear.
 4. **Migración SQL aplicada antes del merge** — Guillermo/Eduardo la corre en el SQL Editor.
-5. **Post-migración con CREATE TYPE / CREATE VIEW**: si aparece error "Could not find the table X in the schema cache", correr `NOTIFY pgrst, 'reload schema';` en el SQL Editor. PostgREST puede quedar con la cache vieja.
+5. **Post-migración con CREATE TYPE / CREATE VIEW / ALTER TABLE**: si aparece error "Could not find the table X in the schema cache", correr `NOTIFY pgrst, 'reload schema';` en el SQL Editor. PostgREST puede quedar con la cache vieja.
 6. **`mem_save`** después de cada patrón/decisión/gotcha con `project: "tecnopro"`.
 7. **Fechas server → client como string ISO** siempre. Ver patrón · TZ safety.
+8. **IA siempre con fallback**: cada llamada a Anthropic va con try/catch y fallback a template. Nunca romper el flow del usuario por fallar la IA.
 
 ---
 

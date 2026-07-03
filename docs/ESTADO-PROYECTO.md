@@ -2,7 +2,7 @@
 
 Documento maestro para **retomar el proyecto en una sesión nueva**. Se actualiza al final de cada sub-fase.
 
-**Última actualización**: cierre del **MVP completo** (Fase 2 · Olas A + B + C + D). 14/14 módulos entregados. Próximo paso: **Fase 3 · IA integrada**.
+**Última actualización**: cierre de **Wave 3 del audit UX + Fase 3 completa (IA)**. Sistema listo para **Fase 4 · capacitación con Guillermo y entrega final**.
 
 ---
 
@@ -16,9 +16,7 @@ Cualquier Claude que abra este repo en una sesión limpia debería:
 4. **Leer `docs/PATRONES.md`** para los patrones establecidos.
 5. **Leer `docs/ROADMAP.md`** para saber qué está hecho y qué falta.
 
-Si Eduardo dice "seguí con TECNOPRO", empezar por los pasos de arriba.
-
-Para el manual orientado a usuarios (Guillo y su equipo), ver `docs/MANUAL-USUARIO.md`.
+Para el manual orientado a usuarios (Guillo y su equipo), ver `docs/MANUAL-USUARIO.md`. Para la propuesta comercial (documento de venta original transformado en snapshot de entrega), ver `Propuesta-TECNOPRO-MVP.html` fuera del repo.
 
 ---
 
@@ -27,7 +25,8 @@ Para el manual orientado a usuarios (Guillo y su equipo), ver `docs/MANUAL-USUAR
 ### Cliente y contexto de negocio
 - **Cliente**: Guillermo (**Onlinebytes**) — servicio técnico
 - **Producto**: TECNOPRO — sistema de gestión integral
-- **Precio MVP**: USD 3.500 · plan de 3 fases (MVP + Fase 2 desarrollo + Fase 3 integraciones)
+- **Precio original del MVP**: USD 3.500 · plan de 3 fases (MVP + Fase 2 desarrollo + Fase 3 integraciones)
+- **Fases 2 y 3 realizadas** dentro del scope acordado — sin costo extra.
 - **Repo**: [edubd4/Tecnopro](https://github.com/edubd4/Tecnopro) (público)
 - **Producción**: `tecnopro-flax.vercel.app`
 - **Supabase**: proyecto "onlinebytes1" en org "Onlinebytes", región São Paulo
@@ -37,7 +36,7 @@ Para el manual orientado a usuarios (Guillo y su equipo), ver `docs/MANUAL-USUAR
 - Supabase Postgres + Auth (RLS ON desde día 1)
 - Tailwind CSS con tokens `tp-*` (cyan/teal/ink) + Radix + Zod
 - Vercel Production
-- Anthropic SDK (Claude Haiku) — **Fase 3, aún no integrado**
+- **Anthropic SDK (Claude Haiku)** — integrada en 3 casos de uso (Fase 3.1 + 3.2 + 3.3)
 
 ### Personas del sistema
 - **Eduardo** (`edubd4`) — dev principal, owner del repo, admin en Supabase mientras dure el desarrollo
@@ -46,91 +45,107 @@ Para el manual orientado a usuarios (Guillo y su equipo), ver `docs/MANUAL-USUAR
 
 ---
 
-## Estado por módulo — **MVP COMPLETO ✅**
+## Nav actual del sistema (12 items)
+
+Después del rediseño Plata de Wave 1, el nav pasó de 14 a 12 items:
+
+| Grupo | Items |
+|---|---|
+| **Operación** | Panel · Órdenes · Turnos · Clientes |
+| **Comercial** | Presupuestos · Catálogo · Stock |
+| **Plata** (admin) | Caja · Contabilidad |
+| **Análisis** (admin) | Analytics · Alertas |
+| **Sistema** (admin) | Usuarios · Historial · Configuración |
+
+**Nota**: los módulos **Gastos** y **Tesorería** que estaban en el scope original de 14 se absorbieron en Caja y Contabilidad respectivamente. Guillo lo confirmó en el audit UX. Rutas antiguas siguen resolviéndose con redirect 301.
+
+---
+
+## Estado por módulo — **MVP COMPLETO + Wave 1/2/3 + Fase 3 IA COMPLETA ✅**
 
 | Ola | Módulo | Estado | Migración | Nota |
 |---|---|---|---|---|
 | — | Auth + Dashboard shell | ✅ | 0001 | Login, sidebar filtrado por rol, guard |
-| A | Clientes | ✅ | 0002 | CRUD + soft delete + CLI-XXXX |
-| A | Catálogo | ✅ | 0005 | SRV-XXXX |
-| A | Stock | ✅ | 0005 | REP-XXXX + trigger de stock atómico + alerta |
-| A | Usuarios | ✅ | 0001 | Hard delete + self-lock |
-| A | Configuración | ✅ | 0001 | 7 campos declarativos leídos por otros módulos |
-| B | Órdenes | ✅ | 0006 + 0007 | Base + items con RPC transaccional stock+orden |
-| B | Turnos | ✅ | 0008 | Vista semanal + overlap detection (tstzrange) |
-| B | Presupuestos | ✅ | 0009 | Items + margen sugerido + mensaje template (firma preparada para IA) |
-| C | Caja | ✅ | 0010 | Movimientos inmutables + saldo view + RPC cobrar_orden |
-| C | Gastos | ✅ | 0011 | Categorías configurables + RPC registrar_gasto (crea EGRESO en caja) |
-| C | Tesorería | ✅ | 0012 (view) | Vista `ordenes_con_saldo` + resumen mensual |
-| C | Contabilidad | ✅ | — | Libro filtrable + export CSV con BOM UTF-8 |
-| D | Panel principal | ✅ | — | KPIs con dual view admin/técnico |
+| Fase 3 | **Reset password** | ✅ (W3) | — | Link en login → email de Supabase → cambio de password |
+| Fase 3 | **Búsqueda global Cmd+K** | ✅ (W3) | — | CommandPalette global, busca en órdenes/presupuestos/clientes |
+| A | Clientes | ✅ | 0002 | CRUD + soft delete + CLI-XXXX + fila clickeable (W2) |
+| A | Catálogo | ✅ | 0005 | SRV-XXXX + tiempo con unidad min/h/d (W1) + fila clickeable (W2) |
+| A | Stock | ✅ | 0005 | REP-XXXX + trigger de stock atómico + alerta + **ComboBox categoría/ubicación** (W1) + **stock inicial en /nuevo** (W1) + **código auto** (W1) |
+| A | Usuarios | ✅ | 0001 | Hard delete + self-lock + fila clickeable (W2) |
+| A | Configuración | ✅ | 0001 | + CRUD categorías de gasto (W1) + umbrales de alertas configurables (W2) |
+| B | Órdenes | ✅ | 0006 + 0007 | Base + items con RPC transaccional + **Aviso automático por cambio de estado (Fase 3.2)** + notas destacadas (W3) |
+| B | Turnos | ✅ | 0008 | Vista semanal + overlap + fecha_fin sugerida (W3) + fila clickeable (W2) |
+| B | Presupuestos | ✅ | 0009 | Items + margen + **Mensaje con IA (Fase 3.1)** con fallback template |
+| C | **Caja** (absorbe Gastos) | ✅ | 0010 + 0011 | Rediseñada W1: 3 pasos ¿entra/sale? → motivo → detalles. \"Gasto (con categoría)\" es una opción interna. |
+| C | **Contabilidad** (absorbe Tesorería) | ✅ | 0012 | Pestañas Libro / Por cobrar. Export CSV con BOM UTF-8. |
+| D | Panel principal | ✅ | — | Dual view por rol. KPI \"Por cobrar\" apunta a /contabilidad?tab=por-cobrar |
 | D | Analytics | ✅ | — | 4 charts en SVG/CSS puro sin lib externa |
-| D | Alertas | ✅ | — | 4 secciones (entregas, saldos, stock, presupuestos) |
+| D | Alertas | ✅ | — | Umbrales configurables (W2) |
+| Sistema | **Historial** (nuevo W3) | ✅ | — | Vista admin de toda la auditoría con filtros por tipo y entidad |
+| Fase 3 | **Chat con IA (drawer flotante)** | ✅ | 0013 + 0014 | Solo admin. Snapshot del negocio en cada request. Multi-turn con Claude Haiku. |
 
-**14/14 módulos del MVP** — todos entregados.
-
----
-
-## Próximo paso — **Fase 3 · IA integrada**
-
-### Alcance de Fase 3
-
-Reemplazar templates estáticos por generación con **Claude Haiku** vía Anthropic SDK. Tres casos de uso principales:
-
-1. **Mensaje de presupuesto** — reemplaza `generarMensajePresupuestoTemplate` en `lib/mensaje-presupuesto.ts`. El swap ya está preparado (firma async lista para cambiar solo la implementación).
-2. **Avisos automáticos a clientes** — "tu equipo está listo", "demora en repuesto", "presupuesto por vencer". Se dispara desde cambios de estado.
-3. **Consultas internas en NL** — "órdenes que vencen esta semana", "cuánto facturé en redes este mes". Un input en el panel que devuelve respuestas contextualizadas.
-
-### Setup técnico requerido
-
-1. **API Key**: agregar `ANTHROPIC_API_KEY` como env var en Vercel (Production + Preview).
-2. **Endpoint API**: crear `app/api/ia/generate/route.ts` con auth check propio (nunca desde client component).
-3. **Rate limiting**: por usuario, para evitar sorpresas de facturación.
-4. **Logging de consumo**: agregar campo `costo_tokens` al `historial` (payload) para trackear uso por usuario.
-
-### Sugerencia de PRs para Fase 3
-
-- **PR 3.1** — Endpoint `/api/ia/generate` con Anthropic SDK + swap de mensaje de presupuesto. Es el uso más simple y ya está preparado. Ideal para validar la conexión y el flujo.
-- **PR 3.2** — Avisos de estado. Trigger desde cambio de estado de orden.
-- **PR 3.3** — Consultas en NL. Requiere prompt engineering con contexto del user y de la DB.
-
-Estimado: 2-3 semanas de trabajo. Requiere validación de consumo/costo con Guillo.
+**14/14 módulos del scope MVP** entregados + **Fase 2 (audit UX Wave 1+2+3)** + **Fase 3 (IA completa)**.
 
 ---
 
-## Preparado para Fase 3 · IA
+## Fase 3 · IA — COMPLETA ✅
 
-**El swap para Claude Haiku ya está preparado**. Ver `lib/mensaje-presupuesto.ts`:
+| Sub-fase | Descripción | Migración | PR |
+|---|---|---|---|
+| **3.1** ✅ | Mensaje de presupuesto con Claude Haiku + fallback template | — | #20 |
+| **3.2** ✅ | Aviso automático al cliente por cambio de estado de orden | 0013 | #25 |
+| **3.3** ✅ | Chat NL con drawer flotante (admin-only, solo lectura) | 0014 | #26 |
 
-```ts
-// Fase 2 actual — template sincrónico
-export function generarMensajePresupuestoTemplate(d: DatosMensajePresupuesto): string { ... }
+**Setup requerido**: `ANTHROPIC_API_KEY` en Vercel (Production + Preview). Sin la key, todo funciona con templates estáticos (fallback silencioso).
 
-// Fase 3 — reemplazo directo con IA
-export async function generarMensajePresupuestoIA(d: DatosMensajePresupuesto): Promise<string> {
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
-  const response = await client.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 1024,
-    messages: [{ role: "user", content: buildPrompt(d) }],
-  })
-  return extractText(response)
-}
-```
-
-El action `generarMensajeAutomatico` cambia solo la función que llama. UI cero cambios.
+**Consumo estimado total**: <$1 USD/mes para uso típico (Haiku es muy barato).
 
 ---
 
-## Fase 4 · Capacitación y entrega
+## Wave 1/2/3 del audit UX/UI — COMPLETO ✅
 
-Después de Fase 3:
+Ver `docs/AUDIT-UX-2026-07-02.md` para el detalle de los 32 issues detectados.
 
-1. Smoke tests end-to-end
-2. Capacitación con Guillermo y técnicos
-3. Período de prueba con datos reales
-4. Ajustes según feedback
-5. **Entrega final**: transferencia de ownership de Supabase y Vercel a la cuenta del cliente
+| Wave | Contenido | PR |
+|---|---|---|
+| **1** ✅ | NumberInput/MoneyInput + ComboBox + stock inicial + CRUD categorías + **rediseño Plata (Caja+Gastos, Contabilidad+Tesorería)** + tiempo con unidad + código auto | #22, #23 |
+| **2** ✅ | Sistema toasts + ConfirmDialog custom + umbrales configurables + filas clickeables faltantes (5 listas) | #24 |
+| **3** ✅ | Vista /historial admin + reset password + Cmd+K global + fecha_fin sugerida + notas destacadas | #27 |
+
+**Items del audit que quedan como backlog no-bloqueante** (nada crítico):
+- Loading skeletons (M5)
+- Formato fecha unificado (M6)
+- Mobile responsive de tablas grandes (M7)
+- Timeline visual de estados en presupuestos (M14)
+- Cosméticos (B1-B5): favicon, empty states unificados
+
+---
+
+## Próximo paso — **Fase 4 · Capacitación y entrega**
+
+El sistema está **listo para probarse en producción con datos reales**.
+
+### Checklist antes de arrancar Fase 4
+
+1. **Env vars en Vercel Production**:
+   - ✅ Supabase URL + anon + service_role
+   - ✅ APP_NAME + APP_URL
+   - ⏳ **`ANTHROPIC_API_KEY`** (necesario para activar Fase 3 IA)
+2. **Supabase Auth Redirect URLs**:
+   - ⏳ Agregar `https://tecnopro-flax.vercel.app/reset-password` (para reset password de Wave 3)
+3. **Aplicar todas las migraciones en SQL Editor** (si alguna quedó pendiente):
+   - 0010, 0011, 0012 (Ola C)
+   - 0013 (Fase 3.2 aviso automático de orden)
+   - 0014 (Fase 3.3 chat con IA)
+4. Verificar `NOTIFY pgrst, 'reload schema';` corrido después de las migraciones más recientes.
+
+### Actividades de Fase 4
+
+- [ ] Smoke tests end-to-end (checklists por módulo).
+- [ ] Capacitación con Guillermo y técnicos (basada en `docs/MANUAL-USUARIO.md`).
+- [ ] Período de prueba con datos reales (mínimo 2 semanas).
+- [ ] Ajustes según feedback.
+- [ ] **Entrega final**: transferencia de ownership de Supabase y Vercel a la cuenta del cliente.
 
 ---
 
@@ -151,10 +166,10 @@ Después de Fase 3:
 - Proyecto: `tecnopro`
 - Dominio: `tecnopro-flax.vercel.app`
 - Owner: `onlinebytes1-1961` (Vercel account del cliente)
-- Env vars cargadas: 5 (Supabase URL + anon + service_role + APP_NAME + APP_URL)
+- Env vars cargadas: 5 (Supabase URL + anon + service_role + APP_NAME + APP_URL). Pendiente: `ANTHROPIC_API_KEY`.
 
 ### Anthropic
-- **Aún no configurado**. En Fase 3 se agrega `ANTHROPIC_API_KEY` como env var en Vercel.
+- **API key pendiente** de configurar en Vercel. Sin la key, el sistema funciona con templates estáticos (los 3 casos de IA tienen fallback).
 
 ---
 
@@ -162,54 +177,65 @@ Después de Fase 3:
 
 1. **`npm run build` local antes del push** — TypeScript strict + ESLint pescan errores que Vercel también pescaría, pero sin round-trip.
 2. **`npm run dev` local para verificar interactividad** — el build NO ejecuta el código, no detecta problemas de event handlers en server components ni bugs de UX. Regla nueva post-PR#7.
-3. **No mergear hasta ver el preview URL de Vercel funcionando** — regla adoptada tras el PR#7 donde mergeamos con bug del onChange.
-4. **Migraciones SQL nuevas se aplican manualmente** en el SQL Editor de Supabase antes del merge (o inmediatamente después). No hay CI que las aplique automáticamente todavía.
-5. **Un PR por sub-fase** — módulos grandes se parten (Ordenes fue B.1a + B.1b, por ejemplo).
-6. **`stopPropagation` en cualquier control dentro de una `<TableRow>` clickeable**.
-7. **Post-migración: `NOTIFY pgrst, 'reload schema';`** en el SQL Editor si aparecen errores "Could not find the table X in the schema cache". PostgREST puede quedar con la cache vieja después de un CREATE TYPE o CREATE VIEW.
-8. **Fechas server → client como string ISO `YYYY-MM-DD`**, nunca como `Date` object. TZ drift entre UTC (server Vercel) y AR (client UTC-3) mete off-by-one bugs. Reconstruir con `T12:00:00` en client para dar margen.
-9. **Supabase-js no compara dos columnas de la misma tabla** (ej. `stock_actual <= stock_minimo`). Traer filas relevantes y filtrar en JS, o crear vista SQL si el volumen lo justifica.
+3. **No mergear hasta ver el preview URL de Vercel funcionando** — regla adoptada tras el PR#7.
+4. **Migraciones SQL nuevas se aplican manualmente** en el SQL Editor de Supabase antes del merge.
+5. **Un PR por sub-fase** — módulos grandes se parten (Ordenes fue B.1a + B.1b). Para las Waves 1/2/3 se metió todo en un solo PR por wave a pedido del owner para minimizar deploys.
+6. **`stopPropagation` en cualquier control dentro de una fila clickeable**.
+7. **Post-migración**: `NOTIFY pgrst, 'reload schema';` en el SQL Editor si aparecen errores "Could not find the table X in the schema cache".
+8. **Fechas server → client como string ISO `YYYY-MM-DD`**, nunca como `Date` object. TZ drift entre UTC (server Vercel) y AR (client UTC-3) mete off-by-one bugs.
+9. **Supabase-js no compara dos columnas de la misma tabla** (ej. `stock_actual <= stock_minimo`). Traer filas y filtrar en JS.
+10. **IA con fallback template**: cada caso de uso de IA debe funcionar sin la API key. Try/catch la llamada → fallback template. Nunca romper el flow del usuario por fallar la IA.
 
 ---
 
-## PRs mergeados (histórico)
+## PRs mergeados (histórico completo)
 
-| # | Título | Ola |
+| # | Título | Fase |
 |---|---|---|
 | #1 | feat(auth): login con Supabase + logout + guard del dashboard | 1.2 |
 | #2 | feat(dashboard): shell con sidebar + placeholders de los 14 modulos | 1.3 |
-| #3 | feat(clientes): modulo completo (CRUD + busqueda + auditoria) | 2A |
-| #4 | feat(catalogo, stock): modulos completos con CRUD + movimientos de stock | 2A |
-| #5 | feat(usuarios, configuracion): alta de usuarios y edicion de config del negocio | 2A |
-| #6 | fix(usuarios): quitar update redundante + agregar delete real | fix |
+| #3 | feat(clientes): modulo completo | 2A |
+| #4 | feat(catalogo, stock): modulos completos | 2A |
+| #5 | feat(usuarios, configuracion) | 2A |
+| #6 | fix(usuarios): quitar update redundante | fix |
 | #7 | feat(ordenes): CRUD base (Ola B.1a) | 2B |
-| #8 | fix(ordenes): mover filtro de estado a client component | fix |
-| #9 | feat(ordenes): items imputados + movimiento SALIDA automatico (Ola B.1b) | 2B |
-| #10 | feat(ordenes): fila clickeable + cambio de estado inline + link al cliente | UX |
-| #11 | feat(turnos): CRUD + vista semana + deteccion de superposiciones (Ola B.2) | 2B |
-| #12 | feat(presupuestos): modulo completo con margen, estados y mensaje template (Ola B.3) | 2B |
-| #13 | chore(docs): snapshot de estado + patrones consolidados post-Ola B | docs |
-| #14 | feat(caja) + fix(turnos): modulo Caja + fix navegador de semana por drift de TZ | 2C.1 + fix |
-| #15 | feat(gastos): modulo Gastos con RPC transaccional a caja (Ola C.2) | 2C.2 |
-| #16 | feat(tesoreria, contabilidad): vistas de reporting + export CSV (Ola C.3) | 2C.3 |
+| #8 | fix(ordenes): filtro de estado a client | fix |
+| #9 | feat(ordenes): items imputados + movimiento SALIDA (Ola B.1b) | 2B |
+| #10 | feat(ordenes): fila clickeable + estado inline | UX |
+| #11 | feat(turnos): CRUD + vista semana | 2B |
+| #12 | feat(presupuestos): modulo completo | 2B |
+| #13 | chore(docs): snapshot post-Ola B | docs |
+| #14 | feat(caja) + fix(turnos) | 2C.1 + fix |
+| #15 | feat(gastos): con RPC transaccional a caja | 2C.2 |
+| #16 | feat(tesoreria, contabilidad): vistas de reporting + export CSV | 2C.3 |
 | #17 | feat(panel, analytics, alertas): cierre del MVP (Ola D) | 2D |
+| #18 | docs: manual de uso end-user | docs |
+| #19 | docs: eliminar mención integración WhatsApp | docs |
+| #20 | feat(ia): mensaje de presupuesto con Claude Haiku | **3.1** |
+| #21 | chore(docs): audit UX/UI + roadmap fixes | docs |
+| #22 | feat(ui): NumberInput con formato es-AR | W1.1 |
+| #23 | feat(ux): Wave 1 completa | **W1** |
+| #24 | feat(ux): Wave 2 completa | **W2** |
+| #25 | feat(ia): avisos automaticos por cambio de estado | **3.2** |
+| #26 | feat(ia): chat con drawer flotante para consultas NL | **3.3** |
+| #27 | feat(ux): Wave 3 completa | **W3** |
 
 ---
 
 ## Backlog acumulado (post-MVP, no bloqueante)
 
-Ordenado por prioridad relativa según valor para Guillo:
+1. **Loading skeletons** con `<Suspense>` — pulido, mejora percepción de velocidad.
+2. **Formato de fecha unificado** — auditoría de que todas las tablas usen `formatFecha`/`formatFechaHora`.
+3. **Mobile responsive de tablas grandes** — convertir a card view en breakpoint móvil.
+4. **Timeline visual de estados en presupuestos** — stepper para BORRADOR → ENVIADO → APROBADO.
+5. **Convertir presupuesto aprobado a orden** con arrastre de items (pedido explícito de Guillo).
+6. **Filtros por técnico/prioridad en `/ordenes`**.
+7. **Cosméticos**: favicon custom TECNOPRO, empty states unificados en tono.
+8. **Tool use de Anthropic en el chat** (Fase 3.3.1) — permitir que el modelo consulte DB en vivo en vez de solo leer snapshot.
+9. **Historial de consumo de IA** en `/configuracion` o `/historial` — visualización de tokens usados por mes.
 
-1. **CRUD de categorías de gasto en UI** — por ahora se gestionan vía SQL Editor. Bajo impacto porque los 8 seeds cubren casi todo, pero es una asimetría del sistema.
-2. **Convertir presupuesto aprobado a orden** — con arrastre de items. Pedido explícito de Guillo, ahorra doble carga.
-3. **Vista `/historial`** para el admin — hoy la tabla `historial` está poblada pero solo se ve desde SQL Editor.
-4. **Filtro por técnico/prioridad en `/ordenes`** — la lista actualmente solo filtra por estado.
-5. **UX de filas clickeables** — aplicado en Órdenes y Presupuestos. Falta en Clientes, Catálogo, Stock, Usuarios, Turnos (lista).
-6. **Umbrales de `/alertas` a `configuracion`** — 30d saldos y 7d presupuestos están hardcoded como constants.
-7. **Comprobantes de gastos** — Fase 3 con Supabase Storage.
-8. **"Pagos por vencer" en Tesorería** — requiere tabla de vencimientos que no está en el MVP.
-9. **Filtros de fecha en `/caja`** — hoy trae últimos 200.
+Nada bloqueante para arrancar la operación.
 
 ---
 
-**Fin del snapshot.** Ver [ROADMAP.md](./ROADMAP.md) para la vista de tareas y fases y [PATRONES.md](./PATRONES.md) para las convenciones de código. Para uso end-user, ver [MANUAL-USUARIO.md](./MANUAL-USUARIO.md).
+**Fin del snapshot.** Ver [ROADMAP.md](./ROADMAP.md) para vista de tareas por fase, [PATRONES.md](./PATRONES.md) para convenciones de código, [MANUAL-USUARIO.md](./MANUAL-USUARIO.md) para uso end-user, y [AUDIT-UX-2026-07-02.md](./AUDIT-UX-2026-07-02.md) para el audit UX/UI completo.
