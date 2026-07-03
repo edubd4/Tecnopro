@@ -7,6 +7,7 @@ import { OrdenForm } from "@/components/ordenes/OrdenForm"
 import { CambiarEstadoOrden } from "@/components/ordenes/CambiarEstadoOrden"
 import { AsignarTecnicoOrden } from "@/components/ordenes/AsignarTecnicoOrden"
 import { ItemsOrden } from "@/components/ordenes/ItemsOrden"
+import { AvisoOrdenSection } from "@/components/ordenes/AvisoOrdenSection"
 import { CobrosOrdenSection } from "@/components/caja/CobrosOrdenSection"
 import { ROL } from "@/lib/constants"
 import { formatFecha, formatFechaHora } from "@/lib/utils"
@@ -26,6 +27,8 @@ type OrdenRow = {
   fecha_entrega_estimada: string | null
   fecha_entrega_real: string | null
   notas_internas: string | null
+  mensaje_estado_generado: string | null
+  mensaje_estado_para: string | null
   created_at: string
   updated_at: string
   clientes: {
@@ -66,7 +69,9 @@ export default async function OrdenDetallePage({
     .select(`
       id, id_publico, estado, prioridad, cliente_id, equipo_desc, falla_declarada,
       diagnostico, tecnico_asignado_id, fecha_recepcion, fecha_entrega_estimada,
-      fecha_entrega_real, notas_internas, created_at, updated_at,
+      fecha_entrega_real, notas_internas,
+      mensaje_estado_generado, mensaje_estado_para,
+      created_at, updated_at,
       clientes:cliente_id ( id, id_publico, nombre, apellido, razon_social, tipo, telefono )
     `)
     .eq("id", params.id)
@@ -210,6 +215,15 @@ export default async function OrdenDetallePage({
             />
           )}
         </div>
+
+        <AvisoOrdenSection
+          ordenId={o.id}
+          ordenIdPublico={o.id_publico}
+          estadoActual={o.estado}
+          mensajeGuardado={o.mensaje_estado_generado}
+          mensajeParaEstado={o.mensaje_estado_para}
+          puedeRegenerar={esAdmin || o.tecnico_asignado_id === user!.id}
+        />
 
         <ItemsOrden
           ordenId={o.id}

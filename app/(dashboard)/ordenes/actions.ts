@@ -14,6 +14,13 @@ import {
 } from "@/lib/validators/orden"
 import { logHistorial } from "@/lib/historial"
 import { ROL, TIPO_EVENTO } from "@/lib/constants"
+import {
+  estadoGeneraAviso,
+  generarAvisoOrdenIA,
+  generarAvisoOrdenTemplate,
+  type DatosAvisoOrden,
+} from "@/lib/aviso-orden"
+import { hayIADisponible } from "@/lib/anthropic"
 
 type ActionResult = { ok: false; error: string } | { ok: true }
 
@@ -147,7 +154,152 @@ export async function cambiarEstadoOrden(
     userId: user.id,
   })
 
+  // Fase 3.2 — Auto-generar aviso para el cliente si el nuevo estado lo amerita.
+  // Corre en background del action; si falla, no se rompe el cambio de estado.
+  if (estadoGeneraAviso(parsed.data.estado)) {
+    await generarYGuardarAviso(supabase, id, current.estado, parsed.data.estado, user.id)
+  }
+
   revalidatePath("/ordenes")
+  revalidatePath(`/ordenes/${id}`)
+  return { ok: true }
+}
+
+/**
+ * Genera y guarda el aviso al cliente para el estado nuevo. Intenta IA con
+ * fallback a template. Errores se loguean pero NO fallan el cambio de estado.
+ */
+async function generarYGuardarAviso(
+  supabase: Awaited<ReturnType<typeof createServerClient>>,
+  ordenId: string,
+  estadoAnterior: string,
+  estadoNuevo: string,
+  userId: string,
+): Promise<void> {
+  try {
+    // Traemos todo lo que necesita el prompt
+    const [ordenRes, configRes, presupuestoRes] = await Promise.all([
+      supabase
+        .from("ordenes")
+        .select(`
+          id_publico, equipo_desc, fecha_entrega_estimada,
+          clientes:cliente_id ( nombre, apellido, razon_social, tipo ),
+          tecnico:tecnico_asignado_id ( nombre )
+        `)
+        .eq("id", ordenId)
+        .single(),
+      supabase
+        .from("configuracion")
+        .select("valor")
+        .eq("clave", "negocio_nombre")
+        .maybeSingle(),
+      supabase
+        .from("presupuestos")
+        .select("id_publico")
+        .eq("orden_id", ordenId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ])
+
+    if (!ordenRes.data) return
+    const o = ordenRes.data as unknown as {
+      id_publico: string
+      equipo_desc: string | null
+      fecha_entrega_estimada: string | null
+      clientes: { nombre: string; apellido: string | null; razon_social: string | null; tipo: string } | null
+      tecnico: { nombre: string } | null
+    }
+
+    const clienteNombre = o.clientes
+      ? o.clientes.tipo === "EMPRESA"
+        ? (o.clientes.razon_social ?? o.clientes.nombre)
+        : [o.clientes.nombre, o.clientes.apellido].filter(Boolean).join(" ")
+      : "cliente"
+
+    const datos: DatosAvisoOrden = {
+      negocioNombre: (configRes.data?.valor as string | null) ?? "TECNOPRO",
+      clienteNombre,
+      ordenIdPublico: o.id_publico,
+      equipoDesc: o.equipo_desc,
+      estadoAnterior,
+      estadoNuevo,
+      presupuestoIdPublico: presupuestoRes.data?.id_publico ?? null,
+      fechaEntregaEstimada: o.fecha_entrega_estimada,
+      tecnicoNombre: o.tecnico?.nombre ?? null,
+    }
+
+    let mensaje: string
+    let source: "ia" | "template" = "template"
+    let tokensInput: number | null = null
+    let tokensOutput: number | null = null
+    let modelUsado: string | null = null
+
+    if (hayIADisponible()) {
+      try {
+        const ia = await generarAvisoOrdenIA(datos)
+        mensaje = ia.mensaje
+        source = "ia"
+        tokensInput = ia.tokensInput
+        tokensOutput = ia.tokensOutput
+        modelUsado = ia.model
+      } catch (err) {
+        console.error("[cambiarEstadoOrden] IA falló, fallback a template:", err)
+        mensaje = generarAvisoOrdenTemplate(datos)
+      }
+    } else {
+      mensaje = generarAvisoOrdenTemplate(datos)
+    }
+
+    await supabase
+      .from("ordenes")
+      .update({
+        mensaje_estado_generado: mensaje,
+        mensaje_estado_para: estadoNuevo,
+      })
+      .eq("id", ordenId)
+
+    await logHistorial(supabase, {
+      tipo: TIPO_EVENTO.MENSAJE_IA,
+      descripcion: `Aviso ${source === "ia" ? "IA" : "template"} generado para orden ${o.id_publico} (${estadoNuevo})`,
+      entidadTipo: "orden",
+      entidadId: o.id_publico,
+      payload: {
+        source,
+        estado_para: estadoNuevo,
+        tokens_input: tokensInput,
+        tokens_output: tokensOutput,
+        model: modelUsado,
+      },
+      userId,
+    })
+  } catch (err) {
+    // Nunca rompemos el cambio de estado por un fallo en la generación de aviso.
+    console.error("[generarYGuardarAviso] error inesperado:", err)
+  }
+}
+
+/**
+ * Regenera manualmente el aviso para el estado actual de la orden.
+ * Útil cuando el user quiere una variante nueva o el aviso está desactualizado.
+ */
+export async function regenerarAvisoOrden(id: string): Promise<ActionResult> {
+  const auth = await requireAuth()
+  if (!auth.ok) return { ok: false, error: auth.error }
+  const { supabase, user } = auth
+
+  const { data: current } = await supabase
+    .from("ordenes")
+    .select("estado")
+    .eq("id", id)
+    .single()
+  if (!current) return { ok: false, error: "Orden no encontrada" }
+
+  if (!estadoGeneraAviso(current.estado)) {
+    return { ok: false, error: "El estado actual no genera aviso" }
+  }
+
+  await generarYGuardarAviso(supabase, id, current.estado, current.estado, user.id)
   revalidatePath(`/ordenes/${id}`)
   return { ok: true }
 }
