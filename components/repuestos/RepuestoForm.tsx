@@ -4,6 +4,7 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { ComboBox } from "@/components/ui/combobox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { MoneyInput, NumberInput } from "@/components/ui/number-input"
@@ -15,6 +16,10 @@ type Props = {
   mode: "create" | "edit"
   repuestoId?: string
   initial?: Partial<RepuestoInput>
+  // Sugerencias de valores ya usados (para el ComboBox). Se computan server-side
+  // con SELECT DISTINCT en la página que renderiza el form.
+  categoriasExistentes?: string[]
+  ubicacionesExistentes?: string[]
 }
 
 const DEFAULTS: RepuestoInput = {
@@ -29,9 +34,16 @@ const DEFAULTS: RepuestoInput = {
   activo: true,
 }
 
-export function RepuestoForm({ mode, repuestoId, initial }: Props) {
+export function RepuestoForm({
+  mode,
+  repuestoId,
+  initial,
+  categoriasExistentes = [],
+  ubicacionesExistentes = [],
+}: Props) {
   const router = useRouter()
   const [form, setForm] = useState<RepuestoInput>({ ...DEFAULTS, ...initial })
+  const [stockInicial, setStockInicial] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
@@ -45,7 +57,7 @@ export function RepuestoForm({ mode, repuestoId, initial }: Props) {
     startTransition(async () => {
       const result =
         mode === "create"
-          ? await createRepuesto(form)
+          ? await createRepuesto(form, stockInicial ?? 0)
           : await updateRepuesto(repuestoId!, form)
       if (result && !result.ok) {
         setError(result.error)
@@ -78,17 +90,24 @@ export function RepuestoForm({ mode, repuestoId, initial }: Props) {
               id="codigo"
               value={form.codigo ?? ""}
               onChange={(e) => update("codigo", e.target.value)}
-              placeholder="Ej. MEM-DDR4-8"
+              placeholder={mode === "create" ? "Si lo dejás vacío usamos REP-XXXX" : "Ej. MEM-DDR4-8"}
             />
+            {mode === "create" && (
+              <p className="text-[11px] text-tp-muted">
+                Podés dejarlo vacío. Se asigna el mismo REP-XXXX del sistema automáticamente.
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="categoria">Categoría</Label>
-            <Input
+            <ComboBox
               id="categoria"
-              value={form.categoria ?? ""}
-              onChange={(e) => update("categoria", e.target.value)}
-              placeholder="Ej. Memorias"
+              value={form.categoria ?? null}
+              onChange={(v) => update("categoria", v)}
+              options={categoriasExistentes}
+              placeholder="Ej. Memorias RAM"
+              emptyMessage="Todavía no hay categorías cargadas"
             />
           </div>
 
@@ -144,21 +163,44 @@ export function RepuestoForm({ mode, repuestoId, initial }: Props) {
           </div>
           <div className="space-y-2">
             <Label htmlFor="ubicacion">Ubicación en depósito</Label>
-            <Input
+            <ComboBox
               id="ubicacion"
-              value={form.ubicacion ?? ""}
-              onChange={(e) => update("ubicacion", e.target.value)}
+              value={form.ubicacion ?? null}
+              onChange={(v) => update("ubicacion", v)}
+              options={ubicacionesExistentes}
               placeholder="Ej. Estante A, caja 3"
+              emptyMessage="Todavía no hay ubicaciones cargadas"
             />
           </div>
         </div>
-
-        {mode === "create" && (
-          <p className="text-xs font-mono text-tp-muted">
-            El stock inicial es 0. Cargalo desde la ficha del repuesto con un movimiento tipo ENTRADA.
-          </p>
-        )}
       </section>
+
+      {mode === "create" && (
+        <section className="rounded-xl border border-tp-line-soft bg-tp-card p-6 space-y-4">
+          <div>
+            <h2 className="font-display text-lg font-semibold">Stock inicial</h2>
+            <p className="text-sm text-tp-secondary mt-1">
+              Si ya tenés unidades de este repuesto en tu depósito, cargalas acá.{" "}
+              <span className="text-tp-green font-medium">No afecta la caja</span>{" "}
+              — asumimos que las tenías desde antes.
+            </p>
+          </div>
+          <div className="max-w-xs space-y-2">
+            <Label htmlFor="stock_inicial">Unidades</Label>
+            <NumberInput
+              id="stock_inicial"
+              min={0}
+              value={stockInicial}
+              onChange={setStockInicial}
+              placeholder="0"
+            />
+            <p className="text-[11px] text-tp-muted">
+              Si lo dejás en 0, se registra el repuesto sin stock y lo cargás
+              después con un movimiento tipo ENTRADA.
+            </p>
+          </div>
+        </section>
+      )}
 
       {error && (
         <div role="alert" className="rounded-md border border-tp-red/40 bg-tp-red/10 px-4 py-3 text-sm text-tp-red">

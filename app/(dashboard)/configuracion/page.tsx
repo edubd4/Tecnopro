@@ -1,4 +1,6 @@
+import Link from "next/link"
 import { redirect } from "next/navigation"
+import { Tag, ChevronRight } from "lucide-react"
 import { createServerClient } from "@/lib/supabase/server"
 import { ConfiguracionForm } from "@/components/configuracion/ConfiguracionForm"
 import { CONFIG_FIELDS } from "@/lib/validators/configuracion"
@@ -52,6 +54,27 @@ export default async function ConfiguracionPage() {
         </header>
 
         <ConfiguracionForm values={values} />
+
+        <section className="pt-6 border-t border-tp-line-soft space-y-3">
+          <h2 className="font-display text-xl font-semibold">Otras configuraciones</h2>
+          <Link
+            href="/configuracion/categorias-gasto"
+            className="flex items-center gap-3 rounded-xl border border-tp-line-soft bg-tp-card p-4 hover:border-tp-cyan/40 transition-colors group"
+          >
+            <div className="rounded-lg bg-tp-cyan/10 text-tp-cyan p-2 shrink-0">
+              <Tag className="w-4 h-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-display font-semibold text-tp-text group-hover:text-tp-cyan transition-colors">
+                Categorías de gasto
+              </p>
+              <p className="text-xs text-tp-secondary mt-0.5">
+                Crear, renombrar, activar o desactivar las categorías que aparecen al registrar un gasto.
+              </p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-tp-muted group-hover:text-tp-cyan" />
+          </Link>
+        </section>
       </div>
     </div>
   )

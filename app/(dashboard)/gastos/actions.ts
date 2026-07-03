@@ -85,5 +85,5 @@ export async function crearGasto(input: GastoCreateInput): Promise<ActionResult>
   // Revalidar /gastos y /caja (el egreso aparece en ambos)
   revalidatePath("/gastos")
   revalidatePath("/caja")
-  redirect("/gastos")
+  redirect("/caja")
 }

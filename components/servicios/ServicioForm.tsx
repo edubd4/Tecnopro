@@ -18,6 +18,8 @@ type Props = {
   initial?: Partial<ServicioInput>
 }
 
+type TiempoUnidad = "min" | "h" | "d"
+
 const DEFAULTS: ServicioInput = {
   nombre: "",
   descripcion: null,
@@ -27,14 +29,40 @@ const DEFAULTS: ServicioInput = {
   activo: true,
 }
 
+// Inferimos la unidad más natural de un valor en minutos.
+// 480 min = 8h (día laboral) → "h"; 1440 min = 1 día → "d"; 30 min → "min".
+function inferirUnidad(min: number | null): { valor: number | null; unidad: TiempoUnidad } {
+  if (min === null || min === 0) return { valor: null, unidad: "min" }
+  if (min % 1440 === 0) return { valor: min / 1440, unidad: "d" }
+  if (min % 60 === 0) return { valor: min / 60, unidad: "h" }
+  return { valor: min, unidad: "min" }
+}
+
+function toMinutos(valor: number | null, unidad: TiempoUnidad): number | null {
+  if (valor === null || valor === 0) return null
+  if (unidad === "d") return valor * 1440
+  if (unidad === "h") return valor * 60
+  return valor
+}
+
 export function ServicioForm({ mode, servicioId, initial }: Props) {
   const router = useRouter()
   const [form, setForm] = useState<ServicioInput>({ ...DEFAULTS, ...initial })
+  const inicial = inferirUnidad(initial?.tiempo_estimado_min ?? null)
+  const [tiempoValor, setTiempoValor] = useState<number | null>(inicial.valor)
+  const [tiempoUnidad, setTiempoUnidad] = useState<TiempoUnidad>(inicial.unidad)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
   function update<K extends keyof ServicioInput>(key: K, value: ServicioInput[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
+  }
+
+  // Sincronizamos form.tiempo_estimado_min con los dos inputs (valor + unidad).
+  function updateTiempo(valor: number | null, unidad: TiempoUnidad) {
+    setTiempoValor(valor)
+    setTiempoUnidad(unidad)
+    update("tiempo_estimado_min", toMinutos(valor, unidad))
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -98,14 +126,31 @@ export function ServicioForm({ mode, servicioId, initial }: Props) {
           </div>
 
           <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="tiempo_estimado_min">Tiempo estimado (minutos)</Label>
-            <NumberInput
-              id="tiempo_estimado_min"
-              min={1}
-              value={form.tiempo_estimado_min ?? null}
-              onChange={(v) => update("tiempo_estimado_min", v)}
-              placeholder="Opcional"
-            />
+            <Label htmlFor="tiempo_valor">Tiempo estimado</Label>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="col-span-2">
+                <NumberInput
+                  id="tiempo_valor"
+                  min={1}
+                  value={tiempoValor}
+                  onChange={(v) => updateTiempo(v, tiempoUnidad)}
+                  placeholder="Opcional"
+                />
+              </div>
+              <Select
+                id="tiempo_unidad"
+                aria-label="Unidad de tiempo"
+                value={tiempoUnidad}
+                onChange={(e) => updateTiempo(tiempoValor, e.target.value as TiempoUnidad)}
+              >
+                <option value="min">Minutos</option>
+                <option value="h">Horas</option>
+                <option value="d">Días</option>
+              </Select>
+            </div>
+            <p className="text-[11px] text-tp-muted">
+              Se guarda internamente en minutos. Usá la unidad más cómoda para vos.
+            </p>
           </div>
 
           <div className="space-y-2 md:col-span-2">

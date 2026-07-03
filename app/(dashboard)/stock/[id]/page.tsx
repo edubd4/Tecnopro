@@ -50,12 +50,42 @@ export default async function RepuestoDetallePage({
 
   if (!repuesto) notFound()
 
-  const { data: movimientos } = await supabase
-    .from("repuestos_movimientos")
-    .select("id, tipo, cantidad, stock_anterior, stock_nuevo, motivo, created_at")
-    .eq("repuesto_id", params.id)
-    .order("created_at", { ascending: false })
-    .limit(50)
+  const [movRes, categoriasRes, ubicacionesRes] = await Promise.all([
+    supabase
+      .from("repuestos_movimientos")
+      .select("id, tipo, cantidad, stock_anterior, stock_nuevo, motivo, created_at")
+      .eq("repuesto_id", params.id)
+      .order("created_at", { ascending: false })
+      .limit(50),
+    // Categorías y ubicaciones existentes (para el ComboBox del form de edición)
+    supabase
+      .from("repuestos")
+      .select("categoria")
+      .eq("activo", true)
+      .not("categoria", "is", null),
+    supabase
+      .from("repuestos")
+      .select("ubicacion")
+      .eq("activo", true)
+      .not("ubicacion", "is", null),
+  ])
+  const movimientos = movRes.data
+
+  const categoriasExistentes = Array.from(
+    new Set(
+      ((categoriasRes.data ?? []) as { categoria: string | null }[])
+        .map((r) => r.categoria?.trim())
+        .filter((c): c is string => !!c),
+    ),
+  ).sort((a, b) => a.localeCompare(b, "es"))
+
+  const ubicacionesExistentes = Array.from(
+    new Set(
+      ((ubicacionesRes.data ?? []) as { ubicacion: string | null }[])
+        .map((r) => r.ubicacion?.trim())
+        .filter((u): u is string => !!u),
+    ),
+  ).sort((a, b) => a.localeCompare(b, "es"))
 
   const movs = (movimientos ?? []) as Movimiento[]
   const bajo = repuesto.activo && repuesto.stock_minimo > 0 && repuesto.stock_actual <= repuesto.stock_minimo
@@ -192,6 +222,8 @@ export default async function RepuestoDetallePage({
             <RepuestoForm
               mode="edit"
               repuestoId={repuesto.id}
+              categoriasExistentes={categoriasExistentes}
+              ubicacionesExistentes={ubicacionesExistentes}
               initial={{
                 nombre: repuesto.nombre,
                 codigo: repuesto.codigo,
