@@ -77,7 +77,26 @@ export function TurnoForm({ mode, turnoId, clientes, tecnicos, ordenes, initial 
               type="datetime-local"
               required
               value={form.fecha_inicio}
-              onChange={(e) => update("fecha_inicio", e.target.value)}
+              onChange={(e) => {
+                const nuevoInicio = e.target.value
+                // Wave 3.4 · Si fecha_fin está vacía o es anterior al nuevo inicio,
+                // sugerir fecha_fin = fecha_inicio + 1h. El user puede sobreescribir.
+                setForm((prev) => {
+                  const sugerirFin = !prev.fecha_fin || prev.fecha_fin <= nuevoInicio
+                  let nuevaFin = prev.fecha_fin
+                  if (sugerirFin && nuevoInicio) {
+                    const d = new Date(nuevoInicio)
+                    d.setHours(d.getHours() + 1)
+                    const y = d.getFullYear()
+                    const m = String(d.getMonth() + 1).padStart(2, "0")
+                    const day = String(d.getDate()).padStart(2, "0")
+                    const hh = String(d.getHours()).padStart(2, "0")
+                    const mm = String(d.getMinutes()).padStart(2, "0")
+                    nuevaFin = `${y}-${m}-${day}T${hh}:${mm}`
+                  }
+                  return { ...prev, fecha_inicio: nuevoInicio, fecha_fin: nuevaFin }
+                })
+              }}
             />
           </div>
           <div className="space-y-2">
@@ -89,6 +108,11 @@ export function TurnoForm({ mode, turnoId, clientes, tecnicos, ordenes, initial 
               value={form.fecha_fin}
               onChange={(e) => update("fecha_fin", e.target.value)}
             />
+            {form.fecha_inicio && (
+              <p className="text-[11px] text-tp-muted">
+                Se sugiere +1h al cambiar el inicio. Podés editarlo.
+              </p>
+            )}
           </div>
         </div>
       </section>

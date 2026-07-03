@@ -19,6 +19,7 @@ import {
   UserCog,
   Settings,
   AlertTriangle,
+  ScrollText,
   type LucideIcon,
 } from "lucide-react"
 import type { IconKey } from "@/lib/nav"
@@ -39,4 +40,5 @@ export const ICONS: Record<IconKey, LucideIcon> = {
   UserCog,
   Settings,
   AlertTriangle,
+  ScrollText,
 }

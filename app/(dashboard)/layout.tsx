@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import { createServerClient } from "@/lib/supabase/server"
 import { DashboardShell } from "@/components/nav/DashboardShell"
+import { CommandPalette } from "@/components/nav/CommandPalette"
 import { ToastProvider } from "@/components/ui/toast"
 import { ConfirmProvider } from "@/components/ui/confirm-dialog"
 import { ChatDrawer } from "@/components/chat/ChatDrawer"
@@ -40,6 +41,7 @@ export default async function DashboardLayout({
         <DashboardShell navGroups={navGroups} userDisplay={userDisplay} userRol={userRol}>
           {children}
         </DashboardShell>
+        <CommandPalette />
         {mostrarChat && <ChatDrawer />}
       </ConfirmProvider>
     </ToastProvider>
