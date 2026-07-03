@@ -46,6 +46,11 @@ export type IAResponse = {
   model: string
 }
 
+export type ChatMessage = {
+  role: "user" | "assistant"
+  content: string
+}
+
 /**
  * Llama al modelo con un prompt de user + system opcional y devuelve texto
  * concatenado + métricas. Extrae solo bloques `text` (ignora tool_use, etc).
@@ -53,6 +58,25 @@ export type IAResponse = {
 export async function llamarAnthropic(params: {
   systemPrompt?: string
   userPrompt: string
+  maxTokens?: number
+  temperature?: number
+}): Promise<IAResponse> {
+  return llamarAnthropicMulti({
+    systemPrompt: params.systemPrompt,
+    messages: [{ role: "user", content: params.userPrompt }],
+    maxTokens: params.maxTokens,
+    temperature: params.temperature,
+  })
+}
+
+/**
+ * Variante multi-turn: recibe un array de mensajes (user/assistant) para
+ * conversaciones continuas donde el modelo necesita recordar el hilo.
+ * Usado por el chat con IA (Fase 3.3).
+ */
+export async function llamarAnthropicMulti(params: {
+  systemPrompt?: string
+  messages: ChatMessage[]
   maxTokens?: number
   temperature?: number
 }): Promise<IAResponse> {
@@ -64,7 +88,7 @@ export async function llamarAnthropic(params: {
     max_tokens: params.maxTokens ?? 1024,
     temperature: params.temperature ?? 0.6,
     ...(params.systemPrompt ? { system: params.systemPrompt } : {}),
-    messages: [{ role: "user", content: params.userPrompt }],
+    messages: params.messages,
   })
 
   const text = response.content
