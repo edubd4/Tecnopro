@@ -3,6 +3,8 @@
 import { useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { useToast } from "@/components/ui/toast"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 import { toggleClienteEstado } from "@/app/(dashboard)/clientes/actions"
 
 type Props = {
@@ -12,21 +14,29 @@ type Props = {
 
 export function ToggleClienteEstadoButton({ clienteId, estado }: Props) {
   const router = useRouter()
+  const toast = useToast()
+  const confirm = useConfirm()
   const [isPending, startTransition] = useTransition()
 
-  function handleClick() {
+  async function handleClick() {
     const irAInactivo = estado === "ACTIVO"
-    const confirmMsg = irAInactivo
-      ? "¿Marcar este cliente como INACTIVO? No se elimina, solo se oculta de operación."
-      : "¿Reactivar este cliente?"
-    if (!confirm(confirmMsg)) return
+    const ok = await confirm({
+      title: irAInactivo ? "¿Marcar cliente como inactivo?" : "¿Reactivar cliente?",
+      description: irAInactivo
+        ? "No se elimina, solo se oculta de operación. Podés reactivarlo cuando quieras."
+        : "El cliente vuelve a aparecer en órdenes y presupuestos.",
+      confirmLabel: irAInactivo ? "Marcar inactivo" : "Reactivar",
+      tone: irAInactivo ? "warning" : "default",
+    })
+    if (!ok) return
 
     startTransition(async () => {
       const result = await toggleClienteEstado(clienteId)
       if (!result.ok) {
-        alert(result.error)
+        toast.error(result.error)
         return
       }
+      toast.success(irAInactivo ? "Cliente marcado como inactivo" : "Cliente reactivado")
       router.refresh()
     })
   }

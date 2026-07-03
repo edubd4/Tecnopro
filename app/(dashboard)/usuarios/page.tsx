@@ -5,6 +5,7 @@ import { createServerClient } from "@/lib/supabase/server"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableEmpty } from "@/components/ui/table"
+import { LinkRow } from "@/components/ui/link-row"
 import { ROL } from "@/lib/constants"
 
 type Profile = {
@@ -86,9 +87,9 @@ export default async function UsuariosPage() {
                 </TableEmpty>
               ) : (
                 rows.map((u) => (
-                  <TableRow key={u.id}>
+                  <LinkRow key={u.id} href={`/usuarios/${u.id}`}>
                     <TableCell className="text-tp-text font-medium">
-                      <Link href={`/usuarios/${u.id}`}>{u.nombre}</Link>
+                      {u.nombre}
                       {u.id === user!.id && (
                         <span className="ml-2 font-mono text-[10px] text-tp-cyan uppercase tracking-widest">
                           (vos)
@@ -108,7 +109,7 @@ export default async function UsuariosPage() {
                         {u.activo ? "ACTIVO" : "INACTIVO"}
                       </Badge>
                     </TableCell>
-                  </TableRow>
+                  </LinkRow>
                 ))
               )}
             </TableBody>

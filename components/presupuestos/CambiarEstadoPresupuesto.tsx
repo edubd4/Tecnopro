@@ -4,6 +4,8 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
+import { useToast } from "@/components/ui/toast"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 import { cambiarEstadoPresupuesto } from "@/app/(dashboard)/presupuestos/actions"
 import { ESTADO_PRES_LABEL } from "@/lib/presupuestos-ui"
 
@@ -13,23 +15,33 @@ type Props = { presupuestoId: string; estado: string }
 
 export function CambiarEstadoPresupuestoBloque({ presupuestoId, estado }: Props) {
   const router = useRouter()
+  const toast = useToast()
+  const confirm = useConfirm()
   const [nuevo, setNuevo] = useState(estado)
-  const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
   async function handleClick() {
     if (nuevo === estado) return
-    if ((nuevo === "RECHAZADO" || nuevo === "VENCIDO") && !window.confirm(`¿Marcar como ${ESTADO_PRES_LABEL[nuevo]}?`)) return
 
-    setError(null)
+    if (nuevo === "RECHAZADO" || nuevo === "VENCIDO") {
+      const ok = await confirm({
+        title: `¿Marcar como ${ESTADO_PRES_LABEL[nuevo]}?`,
+        description: "Se congela el presupuesto en este estado. Podés revertirlo cambiando el estado de vuelta.",
+        confirmLabel: `Marcar ${ESTADO_PRES_LABEL[nuevo]}`,
+        tone: "warning",
+      })
+      if (!ok) return
+    }
+
     startTransition(async () => {
       const result = await cambiarEstadoPresupuesto(presupuestoId, {
         estado: nuevo as typeof ESTADOS[number],
       })
       if (!result.ok) {
-        setError(result.error)
+        toast.error(result.error)
         return
       }
+      toast.success(`Estado: ${ESTADO_PRES_LABEL[nuevo] ?? nuevo}`)
       router.refresh()
     })
   }
@@ -58,11 +70,6 @@ export function CambiarEstadoPresupuestoBloque({ presupuestoId, estado }: Props)
           {isPending ? "Guardando…" : "Aplicar"}
         </Button>
       </div>
-      {error && (
-        <p role="alert" className="text-sm text-tp-red">
-          {error}
-        </p>
-      )}
     </div>
   )
 }

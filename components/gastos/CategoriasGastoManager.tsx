@@ -6,6 +6,8 @@ import { Plus, Check, X, Pencil } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { useToast } from "@/components/ui/toast"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 import {
   crearCategoriaGasto,
   renombrarCategoriaGasto,
@@ -25,22 +27,23 @@ type Props = {
 
 export function CategoriasGastoManager({ categorias }: Props) {
   const router = useRouter()
+  const toast = useToast()
+  const confirm = useConfirm()
   const [nombreNuevo, setNombreNuevo] = useState("")
   const [editandoId, setEditandoId] = useState<number | null>(null)
   const [nombreEditado, setNombreEditado] = useState("")
-  const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
   function handleCrear(e: React.FormEvent) {
     e.preventDefault()
-    setError(null)
     if (!nombreNuevo.trim()) return
     startTransition(async () => {
       const result = await crearCategoriaGasto(nombreNuevo.trim())
       if (!result.ok) {
-        setError(result.error)
+        toast.error(result.error)
         return
       }
+      toast.success(`Categoría "${nombreNuevo.trim()}" creada`)
       setNombreNuevo("")
       router.refresh()
     })
@@ -49,13 +52,11 @@ export function CategoriasGastoManager({ categorias }: Props) {
   function empezarEdicion(cat: Categoria) {
     setEditandoId(cat.id)
     setNombreEditado(cat.nombre)
-    setError(null)
   }
 
   function cancelarEdicion() {
     setEditandoId(null)
     setNombreEditado("")
-    setError(null)
   }
 
   function handleRenombrar(id: number) {
@@ -63,27 +64,36 @@ export function CategoriasGastoManager({ categorias }: Props) {
     startTransition(async () => {
       const result = await renombrarCategoriaGasto(id, nombreEditado.trim())
       if (!result.ok) {
-        setError(result.error)
+        toast.error(result.error)
         return
       }
+      toast.success("Categoría renombrada")
       setEditandoId(null)
       setNombreEditado("")
       router.refresh()
     })
   }
 
-  function handleToggle(cat: Categoria) {
-    const msg = cat.activo
-      ? `¿Desactivar la categoría "${cat.nombre}"? Los gastos históricos siguen intactos pero no aparecerá en el dropdown al cargar un gasto nuevo.`
-      : `¿Reactivar la categoría "${cat.nombre}"?`
-    if (!window.confirm(msg)) return
+  async function handleToggle(cat: Categoria) {
+    const ok = await confirm({
+      title: cat.activo
+        ? `¿Desactivar "${cat.nombre}"?`
+        : `¿Reactivar "${cat.nombre}"?`,
+      description: cat.activo
+        ? "Los gastos históricos siguen intactos, pero la categoría no aparece más al cargar un gasto nuevo."
+        : "La categoría vuelve a aparecer en el dropdown al cargar un gasto.",
+      confirmLabel: cat.activo ? "Desactivar" : "Reactivar",
+      tone: cat.activo ? "warning" : "default",
+    })
+    if (!ok) return
 
     startTransition(async () => {
       const result = await toggleCategoriaGasto(cat.id)
       if (!result.ok) {
-        setError(result.error)
+        toast.error(result.error)
         return
       }
+      toast.success(cat.activo ? "Categoría desactivada" : "Categoría reactivada")
       router.refresh()
     })
   }
@@ -114,12 +124,6 @@ export function CategoriasGastoManager({ categorias }: Props) {
           </Button>
         </div>
       </form>
-
-      {error && (
-        <div role="alert" className="rounded-md border border-tp-red/40 bg-tp-red/10 px-4 py-2 text-sm text-tp-red">
-          {error}
-        </div>
-      )}
 
       {/* Lista */}
       <div className="rounded-xl border border-tp-line-soft bg-tp-card overflow-hidden">

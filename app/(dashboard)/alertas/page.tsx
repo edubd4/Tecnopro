@@ -6,16 +6,13 @@ import { formatFecha, formatPesos } from "@/lib/utils"
 import { toISODate } from "@/lib/fechas"
 import { ESTADO_ORDEN_LABEL, ESTADO_ORDEN_VARIANT } from "@/lib/ordenes-ui"
 import { ESTADO_PRES_LABEL, ESTADO_PRES_VARIANT } from "@/lib/presupuestos-ui"
+import { CONFIG_KEYS, configNumber } from "@/lib/validators/configuracion"
 
 // ============================================================================
 // Alertas — admin-only. 4 secciones que exponen problemas que necesitan
 // atención inmediata. Cada card linkea a la entidad correspondiente.
+// Umbrales configurables desde /configuracion (Wave 2.4).
 // ============================================================================
-
-// Umbral: órdenes con saldo pendiente y >N días desde la recepción se marcan.
-const DIAS_SALDO_VENCIDO = 30
-// Umbral: presupuestos con validez en los próximos N días.
-const DIAS_PRESUPUESTO_PROXIMO = 7
 
 type EntregaVencidaRow = {
   id: string
@@ -61,6 +58,21 @@ function nombreCliente(c: {
 
 export default async function AlertasPage() {
   const supabase = await createServerClient()
+
+  // Traemos los umbrales configurables. Fallback: 30 días saldo, 7 días presupuesto.
+  const { data: configRows } = await supabase
+    .from("configuracion")
+    .select("clave, valor")
+    .in("clave", [
+      CONFIG_KEYS.ALERTA_SALDO_VENCIDO_DIAS,
+      CONFIG_KEYS.ALERTA_PRESUPUESTO_POR_VENCER,
+    ])
+  const configValues = Object.fromEntries(
+    (configRows ?? []).map((r) => [r.clave, (r.valor as string | null) ?? ""]),
+  ) as Record<string, string>
+  const DIAS_SALDO_VENCIDO = configNumber(configValues, CONFIG_KEYS.ALERTA_SALDO_VENCIDO_DIAS, 30)
+  const DIAS_PRESUPUESTO_PROXIMO = configNumber(configValues, CONFIG_KEYS.ALERTA_PRESUPUESTO_POR_VENCER, 7)
+
   const hoyISO = toISODate(new Date())
   const proximosDiasISO = toISODate(
     new Date(Date.now() + DIAS_PRESUPUESTO_PROXIMO * 24 * 3600_000),

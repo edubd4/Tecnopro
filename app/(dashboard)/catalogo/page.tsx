@@ -4,6 +4,7 @@ import { createServerClient } from "@/lib/supabase/server"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableEmpty } from "@/components/ui/table"
+import { LinkRow } from "@/components/ui/link-row"
 import { SearchInput } from "@/components/ui/search-input"
 import { ROL } from "@/lib/constants"
 import { formatPesos } from "@/lib/utils"
@@ -120,13 +121,9 @@ export default async function CatalogoPage({
                 </TableEmpty>
               ) : (
                 rows.map((s) => (
-                  <TableRow key={s.id}>
-                    <TableCell className="font-mono text-tp-cyan">
-                      <Link href={`/catalogo/${s.id}`}>{s.id_publico}</Link>
-                    </TableCell>
-                    <TableCell className="text-tp-text font-medium">
-                      <Link href={`/catalogo/${s.id}`}>{s.nombre}</Link>
-                    </TableCell>
+                  <LinkRow key={s.id} href={`/catalogo/${s.id}`}>
+                    <TableCell className="font-mono text-tp-cyan">{s.id_publico}</TableCell>
+                    <TableCell className="text-tp-text font-medium">{s.nombre}</TableCell>
                     <TableCell>
                       <Badge variant="cyan">
                         {CATEGORIA_LABEL[s.categoria] ?? s.categoria}
@@ -143,7 +140,7 @@ export default async function CatalogoPage({
                         {s.activo ? "ACTIVO" : "INACTIVO"}
                       </Badge>
                     </TableCell>
-                  </TableRow>
+                  </LinkRow>
                 ))
               )}
             </TableBody>

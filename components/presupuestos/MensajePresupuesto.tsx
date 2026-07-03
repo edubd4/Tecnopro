@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation"
 import { Copy, Sparkles, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
+import { useToast } from "@/components/ui/toast"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 import {
   generarMensajeAutomatico,
   guardarMensajeManual,
@@ -18,38 +20,43 @@ type Props = {
 
 export function MensajePresupuesto({ presupuestoId, mensajeActual, puedeEditar }: Props) {
   const router = useRouter()
+  const toast = useToast()
+  const confirm = useConfirm()
   const [mensaje, setMensaje] = useState(mensajeActual ?? "")
   const [copiado, setCopiado] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [ok, setOk] = useState(false)
   const [isGenerando, startGenerando] = useTransition()
   const [isGuardando, startGuardando] = useTransition()
 
   async function handleGenerar() {
-    if (mensaje && !window.confirm("Ya hay un mensaje guardado. ¿Reemplazarlo con el generado?")) return
-    setError(null)
-    setOk(false)
+    if (mensaje) {
+      const ok = await confirm({
+        title: "¿Reemplazar el mensaje actual?",
+        description: "Ya hay un mensaje guardado. Al generar uno nuevo, el anterior se pierde.",
+        confirmLabel: "Regenerar",
+        tone: "warning",
+      })
+      if (!ok) return
+    }
     startGenerando(async () => {
       const result = await generarMensajeAutomatico(presupuestoId)
       if (!result.ok) {
-        setError(result.error)
+        toast.error(result.error)
         return
       }
       if (result.data) setMensaje(result.data)
+      toast.success("Mensaje generado")
       router.refresh()
     })
   }
 
   async function handleGuardar() {
-    setError(null)
-    setOk(false)
     startGuardando(async () => {
       const result = await guardarMensajeManual(presupuestoId, { mensaje })
       if (!result.ok) {
-        setError(result.error)
+        toast.error(result.error)
         return
       }
-      setOk(true)
+      toast.success("Mensaje guardado")
       router.refresh()
     })
   }
@@ -58,9 +65,10 @@ export function MensajePresupuesto({ presupuestoId, mensajeActual, puedeEditar }
     try {
       await navigator.clipboard.writeText(mensaje)
       setCopiado(true)
+      toast.success("Copiado al portapapeles")
       setTimeout(() => setCopiado(false), 1500)
     } catch {
-      alert("No se pudo copiar. Selecciónalo manualmente.")
+      toast.error("No se pudo copiar. Seleccionalo manualmente.")
     }
   }
 
@@ -103,11 +111,6 @@ export function MensajePresupuesto({ presupuestoId, mensajeActual, puedeEditar }
         disabled={!puedeEditar}
         className="font-mono text-sm bg-tp-card"
       />
-
-      {error && <p role="alert" className="text-sm text-tp-red">{error}</p>}
-      {ok && (
-        <p className="text-sm text-tp-green">Mensaje guardado.</p>
-      )}
 
       <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
         <Button

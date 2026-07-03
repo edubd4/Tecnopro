@@ -3,6 +3,8 @@
 import { useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { TableCell, TableRow } from "@/components/ui/table"
+import { useToast } from "@/components/ui/toast"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 import { cn, formatFecha } from "@/lib/utils"
 import { cambiarEstadoPresupuesto } from "@/app/(dashboard)/presupuestos/actions"
 import { ESTADO_PRES_LABEL, ESTADO_PRES_VARIANT } from "@/lib/presupuestos-ui"
@@ -36,24 +38,36 @@ function nombreCliente(c: Cliente): string {
 
 export function PresupuestoListRow(props: Props) {
   const router = useRouter()
+  const toast = useToast()
+  const confirm = useConfirm()
   const [isPending, startTransition] = useTransition()
 
   function goToPresupuesto() {
     router.push(`/presupuestos/${props.id}`)
   }
 
-  function handleEstadoChange(e: React.ChangeEvent<HTMLSelectElement>) {
+  async function handleEstadoChange(e: React.ChangeEvent<HTMLSelectElement>) {
     e.stopPropagation()
     const nuevo = e.target.value as typeof ESTADOS[number]
     if (nuevo === props.estado) return
-    if ((nuevo === "RECHAZADO" || nuevo === "VENCIDO") && !window.confirm(`¿Marcar como ${ESTADO_PRES_LABEL[nuevo]}?`)) return
+
+    if (nuevo === "RECHAZADO" || nuevo === "VENCIDO") {
+      const ok = await confirm({
+        title: `¿Marcar como ${ESTADO_PRES_LABEL[nuevo]}?`,
+        description: "Se congela el presupuesto en este estado. Podés revertirlo cambiando el estado de vuelta.",
+        confirmLabel: `Marcar ${ESTADO_PRES_LABEL[nuevo]}`,
+        tone: "warning",
+      })
+      if (!ok) return
+    }
 
     startTransition(async () => {
       const result = await cambiarEstadoPresupuesto(props.id, { estado: nuevo })
       if (!result.ok) {
-        alert(result.error)
+        toast.error(result.error)
         return
       }
+      toast.success(`${props.id_publico}: ${ESTADO_PRES_LABEL[nuevo] ?? nuevo}`)
       router.refresh()
     })
   }
