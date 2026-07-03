@@ -6,8 +6,8 @@ Guía para Claude Code al trabajar en este repositorio.
 
 Sistema de gestión integral para servicio técnico. Cliente: **Guillermo (Onlinebytes)**.
 
-- 14 módulos en MVP: panel, órdenes, clientes, turnos, presupuestos, catálogo, stock, caja, gastos, tesorería, contabilidad básica, analytics, usuarios, configuraciones
-- IA integrada con Claude Haiku (mensajes, presupuestos, consultas internas)
+- 12 items en el nav (14 del scope original, unificados post-audit UX): panel, órdenes, clientes, turnos, presupuestos, catálogo, stock, caja (absorbe Gastos), contabilidad (absorbe Tesorería), analytics, alertas, historial, usuarios, configuraciones
+- IA integrada con Claude Haiku (3 casos IMPLEMENTADOS): mensaje de presupuesto, avisos automáticos por cambio de estado, chat NL con drawer flotante
 - Roles: `admin` (Guillermo) y `tecnico`
 
 Repo público: `edubd4/Tecnopro`. Propietario y mantenedor: Eduardo Barreiro. Cliente toma ownership de Supabase/Vercel en la entrega final.
@@ -126,4 +126,6 @@ Badge por estado de orden:
 
 ## Roadmap
 
-Ver `docs/ROADMAP.md` (TBD) para el plan en fases. Estado actual: **Fase 1 — Bootstrap**.
+Ver `docs/ROADMAP.md` para el plan en fases y `docs/ESTADO-PROYECTO.md` para el snapshot actual.
+
+**Estado actual**: Fase 1 + Fase 2 (con Waves 1/2/3 del audit UX) + Fase 3 IA COMPLETAS. Próximo paso: **Fase 4 · Capacitación con Guillermo + prueba real + entrega de ownership**.
