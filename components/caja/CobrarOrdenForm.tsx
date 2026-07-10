@@ -22,12 +22,14 @@ const METODOS = [
 type Props = {
   ordenId: string
   ordenIdPublico: string
-  saldoSugerido: number
+  saldoPendiente: number
 }
 
-export function CobrarOrdenForm({ ordenId, ordenIdPublico, saldoSugerido }: Props) {
+export function CobrarOrdenForm({ ordenId, ordenIdPublico, saldoPendiente }: Props) {
   const router = useRouter()
-  const [monto, setMonto] = useState<number>(saldoSugerido)
+  // Sugerimos el saldo pendiente. Si es 0 (orden sin items, ej. una seña),
+  // el campo arranca vacío para que el monto sea una decisión explícita.
+  const [monto, setMonto] = useState<number>(saldoPendiente > 0 ? saldoPendiente : 0)
   const [metodo, setMetodo] = useState<typeof METODOS[number]>("EFECTIVO")
   const [descripcion, setDescripcion] = useState<string>("")
   const [error, setError] = useState<string | null>(null)
@@ -38,6 +40,14 @@ export function CobrarOrdenForm({ ordenId, ordenIdPublico, saldoSugerido }: Prop
     setError(null)
     if (!monto || monto <= 0) {
       setError("El monto debe ser mayor a 0")
+      return
+    }
+    // Con saldo conocido, no dejamos cobrar de más: los movimientos de caja
+    // son append-only y un sobrecobro queda registrado para siempre.
+    if (saldoPendiente > 0 && monto > saldoPendiente) {
+      setError(
+        `El monto supera el saldo pendiente. Máximo a cobrar: $${saldoPendiente.toLocaleString("es-AR")}.`,
+      )
       return
     }
     startTransition(async () => {

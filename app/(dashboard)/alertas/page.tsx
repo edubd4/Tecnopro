@@ -3,7 +3,7 @@ import { Clock, Package, DollarSign, FileText, CheckCircle2 } from "lucide-react
 import { createServerClient } from "@/lib/supabase/server"
 import { Badge } from "@/components/ui/badge"
 import { formatFecha, formatPesos } from "@/lib/utils"
-import { toISODate } from "@/lib/fechas"
+import { toISODate, ahoraArgentina } from "@/lib/fechas"
 import { ESTADO_ORDEN_LABEL, ESTADO_ORDEN_VARIANT } from "@/lib/ordenes-ui"
 import { ESTADO_PRES_LABEL, ESTADO_PRES_VARIANT } from "@/lib/presupuestos-ui"
 import { CONFIG_KEYS, configNumber } from "@/lib/validators/configuracion"
@@ -73,15 +73,17 @@ export default async function AlertasPage() {
   const DIAS_SALDO_VENCIDO = configNumber(configValues, CONFIG_KEYS.ALERTA_SALDO_VENCIDO_DIAS, 30)
   const DIAS_PRESUPUESTO_PROXIMO = configNumber(configValues, CONFIG_KEYS.ALERTA_PRESUPUESTO_POR_VENCER, 7)
 
-  const hoyISO = toISODate(new Date())
+  // "Hoy" en hora argentina — el server corre en UTC.
+  const ahora = ahoraArgentina()
+  const hoyISO = toISODate(ahora)
   const proximosDiasISO = toISODate(
-    new Date(Date.now() + DIAS_PRESUPUESTO_PROXIMO * 24 * 3600_000),
+    new Date(ahora.getTime() + DIAS_PRESUPUESTO_PROXIMO * 24 * 3600_000),
   )
   const hace30DiasISO = toISODate(
-    new Date(Date.now() - DIAS_SALDO_VENCIDO * 24 * 3600_000),
+    new Date(ahora.getTime() - DIAS_SALDO_VENCIDO * 24 * 3600_000),
   )
 
-  const [entregasRes, saldosRes, repuestosRes, presupuestosRes] = await Promise.all([
+  const [entregasRes, saldosRes, repuestosRes, presupuestosRes, presupuestosVencidosRes] = await Promise.all([
     supabase
       .from("ordenes")
       .select(`
@@ -122,6 +124,18 @@ export default async function AlertasPage() {
       .lte("validez_hasta", proximosDiasISO)
       .order("validez_hasta", { ascending: true })
       .limit(50),
+    // ENVIADOS cuya validez ya pasó: quedaron colgados sin respuesta del
+    // cliente. Hay que marcarlos VENCIDO (o renegociar) desde la ficha.
+    supabase
+      .from("presupuestos")
+      .select(`
+        id, id_publico, titulo, estado, validez_hasta,
+        clientes:cliente_id ( nombre, apellido, razon_social, tipo )
+      `)
+      .eq("estado", "ENVIADO")
+      .lt("validez_hasta", hoyISO)
+      .order("validez_hasta", { ascending: true })
+      .limit(50),
   ])
 
   const entregas = (entregasRes.data ?? []) as unknown as EntregaVencidaRow[]
@@ -129,8 +143,9 @@ export default async function AlertasPage() {
   const stockRaw = (repuestosRes.data ?? []) as StockBajoRow[]
   const stock = stockRaw.filter((r) => Number(r.stock_actual) <= Number(r.stock_minimo))
   const presupuestos = (presupuestosRes.data ?? []) as unknown as PresupuestoRow[]
+  const presupuestosVencidos = (presupuestosVencidosRes.data ?? []) as unknown as PresupuestoRow[]
 
-  const total = entregas.length + saldos.length + stock.length + presupuestos.length
+  const total = entregas.length + saldos.length + stock.length + presupuestos.length + presupuestosVencidos.length
 
   return (
     <div className="tp-circuit min-h-[calc(100vh-4rem)] px-6 md:px-10 py-8">
@@ -157,7 +172,7 @@ export default async function AlertasPage() {
           </section>
         ) : (
           <>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
               <ContadorCard
                 icon={<Clock className="w-4 h-4" />}
                 label="Entregas vencidas"
@@ -181,6 +196,12 @@ export default async function AlertasPage() {
                 label="Presupuestos por vencer"
                 count={presupuestos.length}
                 tone="cyan"
+              />
+              <ContadorCard
+                icon={<FileText className="w-4 h-4" />}
+                label="Presupuestos vencidos"
+                count={presupuestosVencidos.length}
+                tone="red"
               />
             </div>
 
@@ -296,6 +317,42 @@ export default async function AlertasPage() {
                           </Badge>
                           <span className="font-mono text-xs text-tp-cyan">
                             vence {formatFecha(p.validez_hasta)}
+                          </span>
+                        </div>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </Seccion>
+            )}
+
+            {/* Presupuestos ya vencidos sin resolver */}
+            {presupuestosVencidos.length > 0 && (
+              <Seccion
+                titulo="Presupuestos ENVIADOS con validez vencida — marcalos VENCIDO o renegociá"
+                icon={<FileText className="w-4 h-4" />}
+                tone="red"
+              >
+                <ul className="divide-y divide-tp-line-soft">
+                  {presupuestosVencidos.map((p) => (
+                    <li key={p.id}>
+                      <Link
+                        href={`/presupuestos/${p.id}`}
+                        className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-tp-surface-mid/50"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="font-mono text-tp-cyan text-xs shrink-0">{p.id_publico}</span>
+                          <span className="text-sm text-tp-text truncate">{p.titulo}</span>
+                          <span className="text-xs text-tp-secondary truncate">
+                            · {nombreCliente(p.clientes)}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Badge variant={ESTADO_PRES_VARIANT[p.estado] ?? "gray"}>
+                            {ESTADO_PRES_LABEL[p.estado] ?? p.estado}
+                          </Badge>
+                          <span className="font-mono text-xs text-tp-red">
+                            venció {formatFecha(p.validez_hasta)}
                           </span>
                         </div>
                       </Link>

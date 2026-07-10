@@ -6,6 +6,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useToast } from "@/components/ui/toast"
 import { MoneyInput, NumberInput } from "@/components/ui/number-input"
 import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
@@ -47,6 +48,7 @@ function toMinutos(valor: number | null, unidad: TiempoUnidad): number | null {
 
 export function ServicioForm({ mode, servicioId, initial }: Props) {
   const router = useRouter()
+  const toast = useToast()
   const [form, setForm] = useState<ServicioInput>({ ...DEFAULTS, ...initial })
   const inicial = inferirUnidad(initial?.tiempo_estimado_min ?? null)
   const [tiempoValor, setTiempoValor] = useState<number | null>(inicial.valor)
@@ -77,7 +79,10 @@ export function ServicioForm({ mode, servicioId, initial }: Props) {
         setError(result.error)
         return
       }
-      if (mode === "edit") router.refresh()
+      if (mode === "edit") {
+        toast.success("Cambios guardados")
+        router.refresh()
+      }
     })
   }
 

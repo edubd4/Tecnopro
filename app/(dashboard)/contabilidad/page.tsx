@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableHead, TableHeader, TableRow, TableCell, TableEmpty } from "@/components/ui/table"
 import { formatPesos, formatFechaHora, formatFecha } from "@/lib/utils"
-import { rangoMesActual, rangoAnioActual, nombreMes } from "@/lib/fechas"
+import { rangoMesActual, rangoAnioActual, nombreMes, diaSiguienteISO, tsArgentina } from "@/lib/fechas"
 import {
   TIPO_MOV_CAJA_LABEL,
   TIPO_MOV_CAJA_VARIANT,
@@ -89,10 +89,15 @@ function TabLink({ current, value, label }: { current: Tab; value: Tab; label: s
 // ─── Tab · Libro ────────────────────────────────────────────────────────────
 type Preset = "mes" | "anio" | "custom"
 
+// `hasta` es lo que eligió/ve el usuario; `hastaExclusiva` es el límite para la
+// query (.lt). En los presets ya viene exclusivo (primer día del período
+// siguiente); en custom el usuario espera que su día "hasta" esté INCLUIDO,
+// así que corremos el límite un día.
 function resolvePeriodo(params: Params): {
   preset: Preset
   desde: string
   hasta: string
+  hastaExclusiva: string
   label: string
 } {
   const preset: Preset =
@@ -104,18 +109,19 @@ function resolvePeriodo(params: Params): {
 
   if (preset === "anio") {
     const r = rangoAnioActual()
-    return { preset, desde: r.desde, hasta: r.hasta, label: `Año ${new Date().getFullYear()}` }
+    return { preset, desde: r.desde, hasta: r.hasta, hastaExclusiva: r.hasta, label: `Año ${new Date().getFullYear()}` }
   }
   if (preset === "custom" && params.desde && params.hasta) {
     return {
       preset,
       desde: params.desde,
       hasta: params.hasta,
+      hastaExclusiva: diaSiguienteISO(params.hasta),
       label: `${params.desde} → ${params.hasta}`,
     }
   }
   const r = rangoMesActual()
-  return { preset: "mes", desde: r.desde, hasta: r.hasta, label: nombreMes() }
+  return { preset: "mes", desde: r.desde, hasta: r.hasta, hastaExclusiva: r.hasta, label: nombreMes() }
 }
 
 type MovimientoRow = {
@@ -143,8 +149,8 @@ async function LibroContent(params: Params) {
       ordenes:orden_id ( id_publico ),
       gastos ( id_publico, categoria:categoria_id ( nombre ) )
     `)
-    .gte("fecha", periodo.desde)
-    .lt("fecha", periodo.hasta)
+    .gte("fecha", tsArgentina(periodo.desde))
+    .lt("fecha", tsArgentina(periodo.hastaExclusiva))
     .order("fecha", { ascending: false })
     .limit(1000)
 
@@ -351,8 +357,8 @@ async function PorCobrarContent() {
     supabase
       .from("movimientos_caja")
       .select("tipo, monto")
-      .gte("fecha", desde)
-      .lt("fecha", hasta),
+      .gte("fecha", tsArgentina(desde))
+      .lt("fecha", tsArgentina(hasta)),
   ])
 
   const rows = (ordenesPendientesRes.data ?? []) as unknown as OrdenPendienteRow[]

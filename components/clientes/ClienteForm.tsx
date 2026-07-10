@@ -6,6 +6,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useToast } from "@/components/ui/toast"
 import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { createCliente, updateCliente } from "@/app/(dashboard)/clientes/actions"
@@ -34,6 +35,7 @@ const DEFAULTS: ClienteInput = {
 
 export function ClienteForm({ mode, clienteId, initial }: ClienteFormProps) {
   const router = useRouter()
+  const toast = useToast()
   const [form, setForm] = useState<ClienteInput>({ ...DEFAULTS, ...initial })
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -57,7 +59,10 @@ export function ClienteForm({ mode, clienteId, initial }: ClienteFormProps) {
         return
       }
       // create hace redirect desde el server. update retorna { ok: true }:
-      if (mode === "edit") router.refresh()
+      if (mode === "edit") {
+        toast.success("Cambios guardados")
+        router.refresh()
+      }
     })
   }
 

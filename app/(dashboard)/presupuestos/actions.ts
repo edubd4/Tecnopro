@@ -101,17 +101,21 @@ export async function updatePresupuesto(id: string, input: PresupuestoCreateInpu
   if (!auth.ok) return { ok: false, error: auth.error }
   const { supabase, user } = auth
 
+  // validez_hasta es NOT NULL en la DB: en edición la exigimos explícita para
+  // no descartar en silencio un campo que el usuario vació.
+  if (!parsed.data.validez_hasta) {
+    return { ok: false, error: "La fecha de validez es obligatoria" }
+  }
+
   const updatePayload: Record<string, unknown> = {
     cliente_id: parsed.data.cliente_id,
     orden_id: parsed.data.orden_id,
     titulo: parsed.data.titulo,
     descripcion: parsed.data.descripcion,
+    validez_hasta: parsed.data.validez_hasta,
     margen_pct: parsed.data.margen_pct,
     notas_internas: parsed.data.notas_internas,
     updated_by: user.id,
-  }
-  if (parsed.data.validez_hasta) {
-    updatePayload.validez_hasta = parsed.data.validez_hasta
   }
 
   const { data, error } = await supabase
@@ -179,6 +183,27 @@ export async function cambiarEstadoPresupuesto(
   return { ok: true }
 }
 
+// La UI oculta los controles de items cuando el presupuesto está cerrado,
+// pero el server tiene que hacer cumplir la misma regla.
+async function verificarPresupuestoEditable(
+  supabase: Awaited<ReturnType<typeof createServerClient>>,
+  presupuestoId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { data } = await supabase
+    .from("presupuestos")
+    .select("estado")
+    .eq("id", presupuestoId)
+    .single()
+  if (!data) return { ok: false, error: "Presupuesto no encontrado" }
+  if (data.estado === "APROBADO" || data.estado === "RECHAZADO") {
+    return {
+      ok: false,
+      error: "El presupuesto está cerrado (aprobado/rechazado). Para modificarlo, cambiá el estado primero.",
+    }
+  }
+  return { ok: true }
+}
+
 // ─── Items · Servicios ──────────────────────────────────────────────────
 export async function agregarServicioAPresupuesto(input: AgregarServicioPresInput): Promise<ActionResult> {
   const parsed = agregarServicioPresSchema.safeParse(input)
@@ -189,6 +214,9 @@ export async function agregarServicioAPresupuesto(input: AgregarServicioPresInpu
   const auth = await requireAuth()
   if (!auth.ok) return { ok: false, error: auth.error }
   const { supabase, user } = auth
+
+  const editable = await verificarPresupuestoEditable(supabase, parsed.data.presupuesto_id)
+  if (!editable.ok) return editable
 
   const { data: srv } = await supabase
     .from("servicios")
@@ -216,6 +244,9 @@ export async function quitarServicioDePresupuesto(itemId: number, presupuestoId:
   if (!auth.ok) return { ok: false, error: auth.error }
   const { supabase } = auth
 
+  const editable = await verificarPresupuestoEditable(supabase, presupuestoId)
+  if (!editable.ok) return editable
+
   const { error } = await supabase.from("presupuesto_servicios").delete().eq("id", itemId)
   if (error) return { ok: false, error: error.message }
 
@@ -233,6 +264,9 @@ export async function agregarRepuestoAPresupuesto(input: AgregarRepuestoPresInpu
   const auth = await requireAuth()
   if (!auth.ok) return { ok: false, error: auth.error }
   const { supabase, user } = auth
+
+  const editable = await verificarPresupuestoEditable(supabase, parsed.data.presupuesto_id)
+  if (!editable.ok) return editable
 
   const { data: rep } = await supabase
     .from("repuestos")
@@ -260,6 +294,9 @@ export async function quitarRepuestoDePresupuesto(itemId: number, presupuestoId:
   const auth = await requireAuth()
   if (!auth.ok) return { ok: false, error: auth.error }
   const { supabase } = auth
+
+  const editable = await verificarPresupuestoEditable(supabase, presupuestoId)
+  if (!editable.ok) return editable
 
   const { error } = await supabase.from("presupuesto_repuestos").delete().eq("id", itemId)
   if (error) return { ok: false, error: error.message }

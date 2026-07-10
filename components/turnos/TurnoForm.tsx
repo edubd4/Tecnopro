@@ -6,6 +6,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useToast } from "@/components/ui/toast"
 import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { createTurno, updateTurno } from "@/app/(dashboard)/turnos/actions"
@@ -38,6 +39,7 @@ const DEFAULTS: TurnoCreateInput = {
 
 export function TurnoForm({ mode, turnoId, clientes, tecnicos, ordenes, initial }: Props) {
   const router = useRouter()
+  const toast = useToast()
   const [form, setForm] = useState<TurnoCreateInput>({ ...DEFAULTS, ...initial })
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -60,7 +62,10 @@ export function TurnoForm({ mode, turnoId, clientes, tecnicos, ordenes, initial 
         setError(result.error)
         return
       }
-      if (mode === "edit") router.refresh()
+      if (mode === "edit") {
+        toast.success("Cambios guardados")
+        router.refresh()
+      }
     })
   }
 
