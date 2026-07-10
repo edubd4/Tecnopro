@@ -38,6 +38,8 @@ export async function middleware(request: NextRequest) {
   const isPublicPath =
     pathname === '/' ||
     pathname.startsWith('/login') ||
+    pathname.startsWith('/olvide-contrasena') ||
+    pathname.startsWith('/reset-password') ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api/auth')
 

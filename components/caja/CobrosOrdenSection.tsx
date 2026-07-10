@@ -45,6 +45,9 @@ export async function CobrosOrdenSection({
   const totalCobrado = movimientos.reduce((sum, m) => sum + m.monto, 0)
   const saldoPendiente = Math.max(totalOrden - totalCobrado, 0)
   const estaCancelada = ordenEstado === "CANCELADA"
+  // Pagada por completo: hay total y ya se cobró todo. Ocultamos el form para
+  // no invitar a un doble cobro (los movimientos de caja son append-only).
+  const estaPagada = totalOrden > 0 && totalCobrado >= totalOrden
 
   return (
     <section className="rounded-xl border border-tp-line-soft bg-tp-card p-6 space-y-5">
@@ -103,12 +106,18 @@ export async function CobrosOrdenSection({
         </div>
       )}
 
-      {puedeCobrar && !estaCancelada && (
+      {puedeCobrar && !estaCancelada && !estaPagada && (
         <CobrarOrdenForm
           ordenId={ordenId}
           ordenIdPublico={ordenIdPublico}
-          saldoSugerido={saldoPendiente > 0 ? saldoPendiente : totalOrden}
+          saldoPendiente={saldoPendiente}
         />
+      )}
+
+      {puedeCobrar && !estaCancelada && estaPagada && (
+        <p className="text-sm text-tp-green font-mono">
+          La orden ya está cobrada por completo. No queda saldo pendiente.
+        </p>
       )}
 
       {estaCancelada && (
