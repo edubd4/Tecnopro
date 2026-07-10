@@ -12,10 +12,11 @@ import {
 import { createServerClient } from "@/lib/supabase/server"
 import { Badge } from "@/components/ui/badge"
 import { formatPesos, formatFechaHora, formatFecha } from "@/lib/utils"
-import { toISODate } from "@/lib/fechas"
+import { toISODate, ahoraArgentina, diaSiguienteISO, tsArgentina } from "@/lib/fechas"
 import { ROL } from "@/lib/constants"
 import { ESTADO_ORDEN_LABEL, ESTADO_ORDEN_VARIANT } from "@/lib/ordenes-ui"
 import { TIPO_MOV_CAJA_VARIANT } from "@/lib/caja-ui"
+import { CONFIG_KEYS, configNumber } from "@/lib/validators/configuracion"
 
 // ============================================================================
 // Panel principal — landing del dashboard
@@ -46,9 +47,28 @@ export default async function PanelPage() {
 // ─── Admin ──────────────────────────────────────────────────────────────────
 async function PanelAdmin({ nombre }: { nombre: string }) {
   const supabase = await createServerClient()
-  const hoyISO = toISODate(new Date())
-  const finHoyISO = toISODate(new Date(Date.now() + 24 * 3600_000))
-  const proximosDiasISO = toISODate(new Date(Date.now() + 7 * 24 * 3600_000))
+  // "Hoy" según la hora argentina, no la del server (UTC en Vercel).
+  const ahora = ahoraArgentina()
+  const hoyISO = toISODate(ahora)
+  const finHoyISO = diaSiguienteISO(hoyISO)
+
+  // Mismos umbrales configurables que usa /alertas, para que el contador del
+  // banner coincida con lo que el usuario encuentra al hacer click.
+  const { data: configRows } = await supabase
+    .from("configuracion")
+    .select("clave, valor")
+    .in("clave", [
+      CONFIG_KEYS.ALERTA_SALDO_VENCIDO_DIAS,
+      CONFIG_KEYS.ALERTA_PRESUPUESTO_POR_VENCER,
+    ])
+  const configValues = Object.fromEntries(
+    (configRows ?? []).map((r) => [r.clave, (r.valor as string | null) ?? ""]),
+  ) as Record<string, string>
+  const DIAS_SALDO_VENCIDO = configNumber(configValues, CONFIG_KEYS.ALERTA_SALDO_VENCIDO_DIAS, 30)
+  const DIAS_PRESUPUESTO_PROXIMO = configNumber(configValues, CONFIG_KEYS.ALERTA_PRESUPUESTO_POR_VENCER, 7)
+
+  const proximosDiasISO = toISODate(new Date(ahora.getTime() + DIAS_PRESUPUESTO_PROXIMO * 24 * 3600_000))
+  const haceDiasSaldoISO = toISODate(new Date(ahora.getTime() - DIAS_SALDO_VENCIDO * 24 * 3600_000))
 
   const [
     saldoRes,
@@ -56,7 +76,9 @@ async function PanelAdmin({ nombre }: { nombre: string }) {
     ordenesActivasRes,
     turnosHoyRes,
     entregasVencidasRes,
+    saldosVencidosRes,
     presupuestosPorVencerRes,
+    presupuestosVencidosRes,
     ultimasOrdenesRes,
     ultimosMovsRes,
   ] = await Promise.all([
@@ -73,19 +95,31 @@ async function PanelAdmin({ nombre }: { nombre: string }) {
     supabase
       .from("turnos")
       .select("id", { count: "exact", head: true })
-      .gte("fecha_inicio", hoyISO)
-      .lt("fecha_inicio", finHoyISO),
+      // fecha_inicio es timestamptz: el límite del día va con offset explícito
+      .gte("fecha_inicio", tsArgentina(hoyISO))
+      .lt("fecha_inicio", tsArgentina(finHoyISO)),
     supabase
       .from("ordenes")
       .select("id", { count: "exact", head: true })
       .lt("fecha_entrega_estimada", hoyISO)
       .not("estado", "in", "(ENTREGADA,CANCELADA)"),
     supabase
+      .from("ordenes_con_saldo")
+      .select("id", { count: "exact", head: true })
+      .gt("saldo_pendiente", 0)
+      .neq("estado", "CANCELADA")
+      .lte("fecha_recepcion", haceDiasSaldoISO),
+    supabase
       .from("presupuestos")
       .select("id", { count: "exact", head: true })
       .eq("estado", "ENVIADO")
       .gte("validez_hasta", hoyISO)
       .lte("validez_hasta", proximosDiasISO),
+    supabase
+      .from("presupuestos")
+      .select("id", { count: "exact", head: true })
+      .eq("estado", "ENVIADO")
+      .lt("validez_hasta", hoyISO),
     supabase
       .from("ordenes")
       .select(`
@@ -107,11 +141,16 @@ async function PanelAdmin({ nombre }: { nombre: string }) {
   const ordenesActivas = ordenesActivasRes.count ?? 0
   const turnosHoy = turnosHoyRes.count ?? 0
   const entregasVencidas = entregasVencidasRes.count ?? 0
+  const saldosVencidos = saldosVencidosRes.count ?? 0
   // Recontamos stock bajo con query específica porque no podemos comparar columnas.
   const stockBajoCount = await countStockBajo(supabase)
   const presupuestosPorVencer = presupuestosPorVencerRes.count ?? 0
+  const presupuestosVencidos = presupuestosVencidosRes.count ?? 0
 
-  const totalAlertas = entregasVencidas + stockBajoCount + presupuestosPorVencer
+  // Mismas 5 categorías que muestra /alertas — el número del banner tiene que
+  // coincidir con lo que el usuario ve al entrar.
+  const totalAlertas =
+    entregasVencidas + saldosVencidos + stockBajoCount + presupuestosPorVencer + presupuestosVencidos
 
   const ordenes = (ultimasOrdenesRes.data ?? []) as unknown as {
     id: string
@@ -161,8 +200,10 @@ async function PanelAdmin({ nombre }: { nombre: string }) {
                 </p>
                 <p className="text-xs text-tp-secondary font-mono mt-0.5">
                   {entregasVencidas > 0 && <span className="mr-3">{entregasVencidas} entrega{entregasVencidas === 1 ? "" : "s"} vencida{entregasVencidas === 1 ? "" : "s"}</span>}
+                  {saldosVencidos > 0 && <span className="mr-3">{saldosVencidos} saldo{saldosVencidos === 1 ? "" : "s"} con demora</span>}
                   {stockBajoCount > 0 && <span className="mr-3">{stockBajoCount} stock bajo</span>}
-                  {presupuestosPorVencer > 0 && <span>{presupuestosPorVencer} presupuesto{presupuestosPorVencer === 1 ? "" : "s"} por vencer</span>}
+                  {presupuestosPorVencer > 0 && <span className="mr-3">{presupuestosPorVencer} presupuesto{presupuestosPorVencer === 1 ? "" : "s"} por vencer</span>}
+                  {presupuestosVencidos > 0 && <span>{presupuestosVencidos} presupuesto{presupuestosVencidos === 1 ? "" : "s"} vencido{presupuestosVencidos === 1 ? "" : "s"}</span>}
                 </p>
               </div>
             </div>
@@ -273,8 +314,8 @@ function nombreCliente(c: {
 // ─── Técnico ────────────────────────────────────────────────────────────────
 async function PanelTecnico({ nombre, userId }: { nombre: string; userId: string }) {
   const supabase = await createServerClient()
-  const hoyISO = toISODate(new Date())
-  const finHoyISO = toISODate(new Date(Date.now() + 24 * 3600_000))
+  const hoyISO = toISODate(ahoraArgentina())
+  const finHoyISO = diaSiguienteISO(hoyISO)
 
   const [misOrdenesRes, misTurnosRes] = await Promise.all([
     supabase
@@ -292,8 +333,8 @@ async function PanelTecnico({ nombre, userId }: { nombre: string; userId: string
       .from("turnos")
       .select("id, id_publico, titulo, fecha_inicio, fecha_fin, estado")
       .eq("tecnico_id", userId)
-      .gte("fecha_inicio", hoyISO)
-      .lt("fecha_inicio", finHoyISO)
+      .gte("fecha_inicio", tsArgentina(hoyISO))
+      .lt("fecha_inicio", tsArgentina(finHoyISO))
       .order("fecha_inicio", { ascending: true }),
   ])
 

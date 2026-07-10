@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { NumberInput } from "@/components/ui/number-input"
 import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { useToast } from "@/components/ui/toast"
 import { createPresupuesto, updatePresupuesto } from "@/app/(dashboard)/presupuestos/actions"
 import type { PresupuestoCreateInput } from "@/lib/validators/presupuesto"
 
@@ -44,6 +45,7 @@ export function PresupuestoForm({
   initial,
 }: Props) {
   const router = useRouter()
+  const toast = useToast()
   const [form, setForm] = useState<PresupuestoCreateInput>({
     cliente_id: initial?.cliente_id ?? "",
     orden_id: initial?.orden_id ?? null,
@@ -76,7 +78,10 @@ export function PresupuestoForm({
         setError(result.error)
         return
       }
-      if (mode === "edit") router.refresh()
+      if (mode === "edit") {
+        toast.success("Cambios guardados")
+        router.refresh()
+      }
     })
   }
 
@@ -154,14 +159,16 @@ export function PresupuestoForm({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="validez_hasta">Válido hasta</Label>
+            <Label htmlFor="validez_hasta">Válido hasta *</Label>
             <Input
               id="validez_hasta"
               type="date"
+              required
               value={form.validez_hasta ?? ""}
               onChange={(e) => update("validez_hasta", e.target.value)}
             />
             <p className="text-[11px] text-tp-muted">
+              Obligatorio — define cuándo el presupuesto pasa a vencido.
               Default: {validezDefaultDias} días desde hoy (configurable en Configuración).
             </p>
           </div>

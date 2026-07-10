@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase/server"
-import { rangoMesActual, rangoAnioActual, toCSV, toISODate } from "@/lib/fechas"
+import { rangoMesActual, rangoAnioActual, toCSV, diaSiguienteISO, tsArgentina, fechaArgentinaISO } from "@/lib/fechas"
 import {
   TIPO_MOV_CAJA_LABEL,
   ORIGEN_MOV_CAJA_LABEL,
@@ -39,20 +39,25 @@ export async function GET(request: NextRequest) {
   const preset = request.nextUrl.searchParams.get("preset") ?? "mes"
   let desde: string
   let hasta: string
+  let hastaExclusiva: string
   if (preset === "anio") {
     const r = rangoAnioActual()
     desde = r.desde
     hasta = r.hasta
+    hastaExclusiva = r.hasta
   } else if (preset === "custom") {
     desde = request.nextUrl.searchParams.get("desde") ?? ""
     hasta = request.nextUrl.searchParams.get("hasta") ?? ""
     if (!desde || !hasta) {
       return NextResponse.json({ error: "Parámetros desde/hasta requeridos" }, { status: 400 })
     }
+    // El usuario espera su día "hasta" INCLUIDO; la query usa .lt exclusivo.
+    hastaExclusiva = diaSiguienteISO(hasta)
   } else {
     const r = rangoMesActual()
     desde = r.desde
     hasta = r.hasta
+    hastaExclusiva = r.hasta
   }
 
   const { data, error } = await supabase
@@ -62,8 +67,8 @@ export async function GET(request: NextRequest) {
       ordenes:orden_id ( id_publico ),
       gastos ( id_publico, categoria:categoria_id ( nombre ) )
     `)
-    .gte("fecha", desde)
-    .lt("fecha", hasta)
+    .gte("fecha", tsArgentina(desde))
+    .lt("fecha", tsArgentina(hastaExclusiva))
     .order("fecha", { ascending: true })
     .limit(10000)
 
@@ -93,7 +98,7 @@ export async function GET(request: NextRequest) {
     const categoria = categoriaJoin?.nombre ?? ""
     return [
       m.id_publico,
-      m.fecha ? toISODate(new Date(m.fecha)) : "",
+      m.fecha ? fechaArgentinaISO(m.fecha) : "",
       TIPO_MOV_CAJA_LABEL[m.tipo] ?? m.tipo,
       ORIGEN_MOV_CAJA_LABEL[m.origen] ?? m.origen,
       categoria,

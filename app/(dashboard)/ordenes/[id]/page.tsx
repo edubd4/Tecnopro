@@ -80,6 +80,12 @@ export default async function OrdenDetallePage({
   if (!orden) notFound()
   const o = orden as unknown as OrdenRow
 
+  // Regla única de edición para datos e items: admin o técnico asignado, y la
+  // orden todavía abierta. Una ENTREGADA/CANCELADA se edita revirtiendo el
+  // estado primero (queda registrado en historial).
+  const ordenCerrada = o.estado === "ENTREGADA" || o.estado === "CANCELADA"
+  const puedeEditar = (esAdmin || o.tecnico_asignado_id === user!.id) && !ordenCerrada
+
   // Total de la orden para la seccion de cobros (solo admin la ve, pero
   // calculamos siempre para no duplicar el fetch bajo el condicional del render)
   const [srvSumRes, repSumRes] = await Promise.all([
@@ -225,14 +231,7 @@ export default async function OrdenDetallePage({
           puedeRegenerar={esAdmin || o.tecnico_asignado_id === user!.id}
         />
 
-        <ItemsOrden
-          ordenId={o.id}
-          puedeEditar={
-            (esAdmin || o.tecnico_asignado_id === user!.id)
-            && o.estado !== "ENTREGADA"
-            && o.estado !== "CANCELADA"
-          }
-        />
+        <ItemsOrden ordenId={o.id} puedeEditar={puedeEditar} />
 
         {esAdmin && (
           <CobrosOrdenSection
@@ -257,25 +256,35 @@ export default async function OrdenDetallePage({
           Creada {formatFechaHora(o.created_at)} · Actualizada {formatFechaHora(o.updated_at)}
         </p>
 
-        <section className="pt-6 border-t border-tp-line-soft space-y-4">
-          <h2 className="font-display text-xl font-semibold">Editar datos</h2>
-          <OrdenForm
-            mode="edit"
-            ordenId={o.id}
-            clientes={clientes}
-            tecnicos={tecnicos}
-            initial={{
-              cliente_id: o.cliente_id,
-              equipo_desc: o.equipo_desc,
-              falla_declarada: o.falla_declarada,
-              diagnostico: o.diagnostico,
-              prioridad: o.prioridad as "BAJA" | "NORMAL" | "ALTA" | "URGENTE",
-              tecnico_asignado_id: o.tecnico_asignado_id,
-              fecha_entrega_estimada: o.fecha_entrega_estimada,
-              notas_internas: o.notas_internas,
-            }}
-          />
-        </section>
+        {puedeEditar ? (
+          <section className="pt-6 border-t border-tp-line-soft space-y-4">
+            <h2 className="font-display text-xl font-semibold">Editar datos</h2>
+            <OrdenForm
+              mode="edit"
+              ordenId={o.id}
+              clientes={clientes}
+              tecnicos={tecnicos}
+              initial={{
+                cliente_id: o.cliente_id,
+                equipo_desc: o.equipo_desc,
+                falla_declarada: o.falla_declarada,
+                diagnostico: o.diagnostico,
+                prioridad: o.prioridad as "BAJA" | "NORMAL" | "ALTA" | "URGENTE",
+                tecnico_asignado_id: o.tecnico_asignado_id,
+                fecha_entrega_estimada: o.fecha_entrega_estimada,
+                notas_internas: o.notas_internas,
+              }}
+            />
+          </section>
+        ) : ordenCerrada ? (
+          <section className="pt-6 border-t border-tp-line-soft">
+            <p className="text-sm text-tp-muted font-mono">
+              La orden está {o.estado === "ENTREGADA" ? "entregada" : "cancelada"} y no se
+              puede editar. Si necesitás corregir algo, cambiá el estado primero — el
+              cambio queda registrado en el historial.
+            </p>
+          </section>
+        ) : null}
       </div>
     </div>
   )
