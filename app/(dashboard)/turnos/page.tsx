@@ -8,6 +8,7 @@ import { LinkRow } from "@/components/ui/link-row"
 import { SemanaCalendario } from "@/components/turnos/SemanaCalendario"
 import { NavegadorSemana } from "@/components/turnos/NavegadorSemana"
 import { formatFechaHora } from "@/lib/utils"
+import { ahoraArgentina, tsArgentina } from "@/lib/fechas"
 import { ESTADO_TURNO_LABEL, ESTADO_TURNO_VARIANT } from "@/lib/turnos-ui"
 
 function lunesDeSemana(base: Date): Date {
@@ -54,7 +55,8 @@ export default async function TurnosPage({
   const supabase = await createServerClient()
   const vista = searchParams.vista === "lista" ? "lista" : "semana"
 
-  const baseSemana = searchParams.semana ? new Date(searchParams.semana + "T00:00:00") : new Date()
+  // "Esta semana" según el reloj argentino, no el del server (UTC).
+  const baseSemana = searchParams.semana ? new Date(searchParams.semana + "T00:00:00") : ahoraArgentina()
   const weekStart = lunesDeSemana(baseSemana)
   const weekEnd = new Date(weekStart)
   weekEnd.setDate(weekEnd.getDate() + 7)
@@ -69,7 +71,9 @@ export default async function TurnosPage({
     .order("fecha_inicio", { ascending: true })
 
   if (vista === "semana") {
-    query.gte("fecha_inicio", weekStart.toISOString()).lt("fecha_inicio", weekEnd.toISOString())
+    // Límites de semana como medianoche ARGENTINA (fecha_inicio es timestamptz);
+    // .toISOString() daría la medianoche del server (UTC), 3 hs corrida.
+    query.gte("fecha_inicio", tsArgentina(toISODate(weekStart))).lt("fecha_inicio", tsArgentina(toISODate(weekEnd)))
   } else {
     // Lista: proximos 60 dias
     const hasta = new Date()

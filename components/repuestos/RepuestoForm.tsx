@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { ComboBox } from "@/components/ui/combobox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useToast } from "@/components/ui/toast"
 import { MoneyInput, NumberInput } from "@/components/ui/number-input"
 import { Textarea } from "@/components/ui/textarea"
 import { createRepuesto, updateRepuesto } from "@/app/(dashboard)/stock/actions"
@@ -42,6 +43,7 @@ export function RepuestoForm({
   ubicacionesExistentes = [],
 }: Props) {
   const router = useRouter()
+  const toast = useToast()
   const [form, setForm] = useState<RepuestoInput>({ ...DEFAULTS, ...initial })
   const [stockInicial, setStockInicial] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -63,7 +65,10 @@ export function RepuestoForm({
         setError(result.error)
         return
       }
-      if (mode === "edit") router.refresh()
+      if (mode === "edit") {
+        toast.success("Cambios guardados")
+        router.refresh()
+      }
     })
   }
 

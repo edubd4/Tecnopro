@@ -2,7 +2,7 @@ import { BarChart3, ClipboardList, Users as UsersIcon, Tag, TrendingUp } from "l
 import { createServerClient } from "@/lib/supabase/server"
 import { formatPesos } from "@/lib/utils"
 import { ESTADO_ORDEN_LABEL } from "@/lib/ordenes-ui"
-import { nombreMes } from "@/lib/fechas"
+import { nombreMes, ahoraArgentina, mesArgentina } from "@/lib/fechas"
 
 // ============================================================================
 // Analytics — admin-only (RLS de las tablas base ya lo bloquea).
@@ -129,7 +129,7 @@ export default async function AnalyticsPage() {
 }
 
 function ultimosMesesISO(meses: number): string {
-  const d = new Date()
+  const d = ahoraArgentina()
   d.setDate(1)
   d.setHours(0, 0, 0, 0)
   d.setMonth(d.getMonth() - (meses - 1))
@@ -139,7 +139,7 @@ function ultimosMesesISO(meses: number): string {
 }
 
 function inicioMesISO(): string {
-  const d = new Date()
+  const d = ahoraArgentina()
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, "0")
   return `${y}-${m}-01`
@@ -152,7 +152,7 @@ function agruparPorMes(
   cantidadMeses: number,
 ): MesFlujo[] {
   const map = new Map<string, { ingresos: number; egresos: number }>()
-  const hoy = new Date()
+  const hoy = ahoraArgentina()
   for (let i = cantidadMeses - 1; i >= 0; i--) {
     const d = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1)
     const y = d.getFullYear()
@@ -160,7 +160,9 @@ function agruparPorMes(
     map.set(`${y}-${m}`, { ingresos: 0, egresos: 0 })
   }
   for (const mv of movs) {
-    const periodo = mv.fecha.substring(0, 7)
+    // El timestamp viene en UTC: el mes se decide en hora argentina para que
+    // un movimiento de las 22:00 del 30/6 no caiga en julio.
+    const periodo = mesArgentina(mv.fecha)
     const bucket = map.get(periodo)
     if (!bucket) continue
     if (mv.tipo === "INGRESO") bucket.ingresos += Number(mv.monto)

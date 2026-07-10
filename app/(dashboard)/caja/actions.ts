@@ -63,10 +63,19 @@ export async function crearMovimiento(input: MovimientoCreateInput): Promise<Act
     return { ok: false, error: error?.message ?? "No se pudo registrar el movimiento" }
   }
 
-  // El GASTO específico se implementa en la Ola C.2 (módulo Gastos).
-  // Acá solo diferenciamos INGRESO/EGRESO genérico para el historial.
+  // Tipo de evento según el origen: apertura/cierre/ajuste son operativa de
+  // caja (NOTA), no cobros ni gastos reales. Solo el ingreso/egreso puntual
+  // se registra como COBRO/GASTO.
+  const esOperativaCaja =
+    parsed.data.origen === "APERTURA" ||
+    parsed.data.origen === "CIERRE" ||
+    parsed.data.origen === "AJUSTE"
   await logHistorial(supabase, {
-    tipo: parsed.data.tipo === "INGRESO" ? TIPO_EVENTO.COBRO : TIPO_EVENTO.GASTO,
+    tipo: esOperativaCaja
+      ? TIPO_EVENTO.NOTA
+      : parsed.data.tipo === "INGRESO"
+        ? TIPO_EVENTO.COBRO
+        : TIPO_EVENTO.GASTO,
     descripcion: `${data.id_publico}: ${parsed.data.tipo} $${parsed.data.monto} · ${parsed.data.descripcion}`,
     entidadTipo: "movimiento_caja",
     entidadId: data.id_publico,

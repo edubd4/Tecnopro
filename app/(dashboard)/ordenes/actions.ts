@@ -68,7 +68,7 @@ export async function createOrden(input: OrdenCreateInput): Promise<ActionResult
   }
 
   await logHistorial(supabase, {
-    tipo: TIPO_EVENTO.NUEVO_CLIENTE,     // reutilizo tipo NOTA para creaciones
+    tipo: TIPO_EVENTO.NOTA,     // no hay tipo NUEVA_ORDEN en el enum; NOTA es el genérico de creaciones
     descripcion: `Nueva orden ${data.id_publico}`,
     entidadTipo: "orden",
     entidadId: data.id_publico,
@@ -310,6 +310,7 @@ export async function asignarTecnicoOrden(id: string, tecnicoId: string | null):
   if (!guard.ok) return { ok: false, error: guard.error }
   const { supabase, user } = guard
 
+  let tecnicoNombre: string | null = null
   if (tecnicoId) {
     // Verificar que el user existe, es tecnico o admin, y esta activo
     const { data: tec } = await supabase
@@ -323,6 +324,7 @@ export async function asignarTecnicoOrden(id: string, tecnicoId: string | null):
     if (tec.rol !== ROL.TECNICO && tec.rol !== ROL.ADMIN) {
       return { ok: false, error: "El usuario asignado no puede tomar órdenes" }
     }
+    tecnicoNombre = tec.nombre
   }
 
   const { data: current } = await supabase
@@ -341,7 +343,7 @@ export async function asignarTecnicoOrden(id: string, tecnicoId: string | null):
   await logHistorial(supabase, {
     tipo: TIPO_EVENTO.TURNO_ASIGNADO,     // reusamos tipo TURNO_ASIGNADO para asignaciones
     descripcion: tecnicoId
-      ? `Orden ${current.id_publico} asignada a técnico ${tecnicoId}`
+      ? `Orden ${current.id_publico} asignada a ${tecnicoNombre ?? "técnico"}`
       : `Orden ${current.id_publico} sin asignación`,
     entidadTipo: "orden",
     entidadId: current.id_publico,

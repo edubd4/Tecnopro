@@ -15,7 +15,9 @@ export async function GET(req: Request) {
   }
 
   const url = new URL(req.url)
-  const q = (url.searchParams.get("q") ?? "").trim()
+  // Comas y paréntesis son sintaxis del filtro .or() de PostgREST: si viajan
+  // dentro del término rompen la query. Los reemplazamos por espacio.
+  const q = (url.searchParams.get("q") ?? "").replace(/[,()]/g, " ").trim()
   if (q.length < 2) {
     return NextResponse.json({ ok: true, data: { ordenes: [], presupuestos: [], clientes: [] } })
   }
